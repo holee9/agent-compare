@@ -45,7 +45,12 @@ Detection Logic:
 2. If source code found: Classify as "Existing Project" and present confirmation
 3. If no source code found: Classify as "New Project"
 
-[HARD] Present detection result via AskUserQuestion for user confirmation.
+Autonomous mode for existing projects (workflow.autonomous.skip_project_check_if_exists is true AND source code found):
+- Auto-classify as "Existing Project" without AskUserQuestion
+- Display detection summary and proceed directly to Phase 1
+
+Manual mode (workflow.autonomous.skip_project_check_if_exists is false, OR no source code found):
+- Present detection result via AskUserQuestion for user confirmation.
 
 Question: Project type detected. Please confirm (in user's conversation_language):
 
@@ -164,24 +169,23 @@ Execution Modes:
 
 ## Phase 2: User Confirmation
 
-Present analysis summary via AskUserQuestion.
+Autonomous mode (workflow.autonomous.auto_approve_low_risk is true):
+- Display analysis summary and auto-proceed to Phase 3 without AskUserQuestion
 
-Display in user's conversation_language:
-
-- Detected Language
-- Framework
-- Architecture
-- Key Features list
-
-Options:
-
-- Proceed with documentation generation (Recommended): MoAI will generate product.md, structure.md, and tech.md based on the analysis above. You can review and edit the documents afterwards.
-- Review specific analysis details first: See a detailed breakdown of each detected component before generating documents. Useful if you want to correct any misdetected frameworks or features.
-- Cancel and adjust project configuration: Stop the process and make changes to your project setup. Choose this if the analysis looks significantly incorrect.
-
-If "Review details": Provide detailed breakdown, allow corrections.
-If "Proceed": Continue to Phase 3.
-If "Cancel": Exit with guidance.
+Manual mode (workflow.autonomous.auto_approve_low_risk is false):
+- Present analysis summary via AskUserQuestion.
+- Display in user's conversation_language:
+  - Detected Language
+  - Framework
+  - Architecture
+  - Key Features list
+- Options:
+  - Proceed with documentation generation (Recommended): MoAI will generate product.md, structure.md, and tech.md based on the analysis above. You can review and edit the documents afterwards.
+  - Review specific analysis details first: See a detailed breakdown of each detected component before generating documents. Useful if you want to correct any misdetected frameworks or features.
+  - Cancel and adjust project configuration: Stop the process and make changes to your project setup. Choose this if the analysis looks significantly incorrect.
+- If "Review details": Provide detailed breakdown, allow corrections.
+- If "Proceed": Continue to Phase 3.
+- If "Cancel": Exit with guidance.
 
 ---
 
@@ -280,11 +284,14 @@ Display completion message in user's conversation_language:
 - Location: .moai/project/
 - Status: Success or partial completion
 
-Next Steps (AskUserQuestion):
+Autonomous mode (workflow.autonomous.skip_next_step_guidance is true):
+- Display completion summary only (no AskUserQuestion)
 
-- Write SPEC (Recommended): Execute /moai plan to define your first feature specification. This is the natural next step after project setup - it creates a detailed plan for what you want to build.
-- Review Documentation: Open the generated product.md, structure.md, and tech.md files for review and manual editing. Choose this if you want to verify or customize the generated content.
-- Start New Session: Clear the current context and start fresh. Choose this if you want to work on something completely different.
+Manual mode (workflow.autonomous.skip_next_step_guidance is false):
+- Next Steps (AskUserQuestion):
+  - Write SPEC (Recommended): Execute /moai plan to define your first feature specification. This is the natural next step after project setup - it creates a detailed plan for what you want to build.
+  - Review Documentation: Open the generated product.md, structure.md, and tech.md files for review and manual editing. Choose this if you want to verify or customize the generated content.
+  - Start New Session: Clear the current context and start fresh. Choose this if you want to work on something completely different.
 
 ---
 

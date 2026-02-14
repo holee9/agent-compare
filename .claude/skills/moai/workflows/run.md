@@ -88,21 +88,21 @@ Output: Execution plan containing plan_summary, requirements list, success_crite
 
 ### Decision Point 1: Plan Approval
 
-Tool: AskUserQuestion (at orchestrator level)
-
-Before presenting options, verify the plan against these criteria:
+Before proceeding, verify the plan against these criteria:
 
 - Proportionality: Is the plan proportional to the requirements? Flag plans with excessive abstraction layers, unnecessary patterns, or scope creep beyond SPEC requirements.
 - Code Reuse: Has the plan identified existing code, libraries, or patterns that can be reused? Flag plans that reinvent existing functionality.
 - Simplicity: Does the plan follow YAGNI (You Aren't Gonna Need It)? Flag speculative features not in the SPEC.
 
-Options:
+Autonomous mode (workflow.autonomous.auto_approve_low_risk is true):
+- Auto-approve if all validation criteria pass (no flags raised)
+- Display plan summary and proceed to Phase 1.5 without AskUserQuestion
+- If any criteria flagged: Fall back to manual mode
 
-- Proceed with plan (continue to Phase 1.5)
-- Modify plan (collect feedback, re-run Phase 1)
-- Postpone (exit, continue later)
-
-If user does not select "Proceed": Exit execution.
+Manual mode (workflow.autonomous.auto_approve_low_risk is false, or criteria flagged):
+- Tool: AskUserQuestion (at orchestrator level)
+- Options: Proceed with plan, Modify plan, Postpone
+- If user does not select "Proceed": Exit execution.
 
 ### Phase 1.5: Task Decomposition
 
@@ -349,8 +349,6 @@ Output: branch_name, commits array (sha and message), files_staged count, status
 
 ### Phase 4: Completion and Guidance
 
-Tool: AskUserQuestion (at orchestrator level)
-
 Display implementation summary:
 
 - Files created count
@@ -358,12 +356,12 @@ Display implementation summary:
 - Coverage percentage
 - Commits count
 
-Options:
+Autonomous mode (workflow.autonomous.skip_next_step_guidance is true):
+- Display summary only and auto-proceed to /moai sync (no AskUserQuestion)
 
-- Sync Documentation (recommended): Execute /moai sync to synchronize docs and create PR
-- Implement Another Feature: Return to /moai plan for additional SPEC
-- Review Results: Examine implementation and test coverage locally
-- Finish: Session complete
+Manual mode (workflow.autonomous.skip_next_step_guidance is false):
+- Tool: AskUserQuestion (at orchestrator level)
+- Options: Sync Documentation (recommended), Implement Another Feature, Review Results, Finish
 
 ---
 

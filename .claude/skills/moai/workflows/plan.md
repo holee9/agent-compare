@@ -214,23 +214,23 @@ Agent: manager-git subagent
 
 ### Decision Point 2: Development Environment Selection
 
-Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
+Autonomous mode (workflow.autonomous.auto_select_environment is true):
+- Auto-select based on flags: --worktree → worktree, --branch → branch, no flag → current branch
+- No AskUserQuestion needed
 
-Options:
-
-- Create Worktree (recommended for parallel SPEC development)
-- Create Branch (traditional workflow)
-- Use current branch
+Manual mode (workflow.autonomous.auto_select_environment is false):
+- Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
+- Options: Create Worktree, Create Branch, Use current branch
 
 ### Decision Point 3: Next Action Selection
 
-Tool: AskUserQuestion (after SPEC creation completes)
+Autonomous mode (workflow.autonomous.skip_next_step_guidance is true):
+- Auto-proceed to /moai run SPEC-{ID} without prompting
+- Display summary message only (no AskUserQuestion)
 
-Options:
-
-- Start Implementation (execute /moai run SPEC-{ID})
-- Modify Plan
-- Add New Feature (create additional SPEC)
+Manual mode (workflow.autonomous.skip_next_step_guidance is false):
+- Tool: AskUserQuestion (after SPEC creation completes)
+- Options: Start Implementation, Modify Plan, Add New Feature
 
 ---
 

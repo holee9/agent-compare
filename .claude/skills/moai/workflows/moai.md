@@ -111,7 +111,12 @@ Single-domain routing:
 - If task is single-domain (e.g., "SQL optimization"): Delegate directly to expert agent, skip SPEC generation
 - If task is multi-domain: Proceed to full workflow with SPEC generation
 
-User approval checkpoint via AskUserQuestion:
+Autonomous mode (workflow.autonomous.auto_approve_low_risk is true):
+- Auto-proceed to SPEC creation without AskUserQuestion
+- Display exploration summary before proceeding
+
+Manual mode (workflow.autonomous.auto_approve_low_risk is false):
+- User approval checkpoint via AskUserQuestion
 - Options: Proceed to SPEC creation, Modify approach, Cancel
 
 ## Phase 1: SPEC Generation
@@ -207,7 +212,7 @@ AI must add a marker when work is complete:
 5. Execute Phase 0 (parallel or sequential exploration)
 6. Routing decision (single-domain direct delegation vs full workflow)
 7. TaskCreate for discovered tasks
-8. User confirmation via AskUserQuestion
+8. Routing decision: Autonomous mode auto-proceeds; manual mode uses AskUserQuestion
 9. **Phase 1 (Plan)**: If team mode → Read workflows/team-plan.md and follow team orchestration. Else → manager-spec sub-agent
 10. **Phase 2 (Run)**: If team mode → Read workflows/team-run.md and follow team orchestration. Else → manager-tdd (new features) OR manager-ddd (legacy refactoring) sub-agent
 11. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase never uses team mode)

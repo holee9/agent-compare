@@ -83,7 +83,15 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
-- If tests fail: Present failure summary and offer options via AskUserQuestion
+- If tests fail:
+
+Autonomous mode (workflow.autonomous.auto_fix_test_failures is true):
+- Auto-delegate to expert-debug subagent for fix attempt
+- If fix succeeds: Re-run tests and proceed
+- If fix fails after 3 retries: Fall back to manual mode
+
+Manual mode (workflow.autonomous.auto_fix_test_failures is false, or auto-fix failed):
+- Present failure summary and offer options via AskUserQuestion
   - Fix and retry: Delegate to expert-debug subagent
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
@@ -155,10 +163,17 @@ Collect all results with timeouts (180s for tests, 120s for others). Handle part
 
 #### Step 0.5.3: Handle Test Failures
 
-If any tests fail, use AskUserQuestion:
+If any tests fail:
 
-- Continue: Proceed with sync despite failures
-- Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
+Autonomous mode (workflow.autonomous.auto_fix_test_failures is true):
+- Auto-delegate to expert-debug subagent for fix attempt
+- If fix succeeds: Re-run diagnostics and proceed
+- If fix fails after 3 retries: Fall back to manual mode
+
+Manual mode (workflow.autonomous.auto_fix_test_failures is false, or auto-fix failed):
+- Use AskUserQuestion:
+  - Continue: Proceed with sync despite failures
+  - Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
 
 #### Step 0.5.4: Code Review
 
@@ -241,16 +256,20 @@ For each SPEC associated with the current sync:
   - Level 2 (spec-anchored): SPEC content will be updated to reflect actual implementation
   - Level 3 (spec-as-source): Flag discrepancies as warnings (implementation should match SPEC exactly)
 
-#### Step 1.6: User Approval
+#### Step 1.6: Sync Plan Approval
 
-Tool: AskUserQuestion
+Autonomous mode (workflow.autonomous.auto_approve_low_risk is true):
+- Auto-approve if no CRITICAL issues found in Phase 0 and Phase 0.5
+- Display sync plan summary and proceed to Phase 2 without AskUserQuestion
+- If CRITICAL issues exist: Fall back to manual mode
 
-Display sync plan report and present options:
-
-- Proceed with Sync
-- Request Modifications (re-run Phase 1)
-- Review Details (show full project results, re-ask)
-- Abort (exit with no changes)
+Manual mode (workflow.autonomous.auto_approve_low_risk is false, or CRITICAL issues found):
+- Tool: AskUserQuestion
+- Display sync plan report and present options:
+  - Proceed with Sync
+  - Request Modifications (re-run Phase 1)
+  - Review Details (show full project results, re-ask)
+  - Abort (exit with no changes)
 
 ### Phase 2: Execute Document Synchronization
 
@@ -489,7 +508,12 @@ Display summary including:
 
 #### Context-Aware Next Steps
 
-Tool: AskUserQuestion with options tailored to delivery result:
+Autonomous mode (workflow.autonomous.skip_next_step_guidance is true):
+- Display completion summary only (no AskUserQuestion)
+- No automatic navigation to next workflow step
+
+Manual mode (workflow.autonomous.skip_next_step_guidance is false):
+- Tool: AskUserQuestion with options tailored to delivery result:
 
 **If PR was created (github_flow feature branch, or gitflow):**
 - Review PR on GitHub

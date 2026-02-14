@@ -151,6 +151,10 @@ secret-*.*
 *_secret=*
 *_token=*
 
+# Cookie files (contain sensitive session tokens)
+*-cookies.json
+test.json
+
 # Cloud provider credentials
 .aws/config
 .aws/credentials

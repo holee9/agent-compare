@@ -108,6 +108,29 @@ workflow:
         model: "inherit"
         description: "Multi-perspective code review"
 
+  # Autonomous mode settings
+  # Controls automatic approval and checkpoint skipping to reduce user interruptions.
+  # When enabled, low-risk decisions are auto-approved and guidance prompts are skipped.
+  # Safety-critical checkpoints (breaking changes, CRITICAL quality) are always preserved.
+  autonomous:
+    # Master switch for autonomous behavior
+    enabled: true
+
+    # Auto-approve low-risk workflow decisions (plan approval, sync approval)
+    auto_approve_low_risk: true
+
+    # Skip "next steps" guidance prompts after workflow completion
+    skip_next_step_guidance: true
+
+    # Skip product.md existence check if project docs already exist
+    skip_project_check_if_exists: true
+
+    # Auto-fix test failures before prompting user (delegate to expert-debug)
+    auto_fix_test_failures: true
+
+    # Auto-proceed with default option for environment selection (branch/worktree)
+    auto_select_environment: true
+
   # Completion markers for workflow state detection
   completion:
     markers:
