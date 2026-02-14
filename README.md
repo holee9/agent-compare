@@ -107,16 +107,70 @@ API 키가 설정되지 않은 AI는 Claude가 대신 처리합니다. 모든 AP
 
 ```
 agent-compare/
-├── mcp-servers/
-│   ├── mcp-openai/          # ChatGPT MCP 서버
-│   ├── mcp-gemini/          # Gemini MCP 서버
-│   └── mcp-perplexity/      # Perplexity MCP 서버
+├── proxima/                   # Proxima Multi-AI 게이트웨이 (서브모듈)
+├── docs/
+│   ├── plans/                 # 설계 문서
+│   └── guides/                # API 키 발급 가이드
 ├── .claude/skills/moai-pipeline-bizplan/
-│   └── SKILL.md             # 마스터 스킬 정의
-├── docs/plans/              # 설계 문서
-├── final-summary.md         # 4개 AI 교차검증 최종안
-└── .moai/pipeline/          # 파이프라인 실행 상태
+│   └── SKILL.md               # 마스터 스킬 정의
+├── final-summary.md           # 4개 AI 교차검증 최종안
+└── .moai/pipeline/            # 파이프라인 실행 상태
 ```
+
+## 검증 기록 (2026-02-15)
+
+### API 키 인증 검증
+
+| 서비스 | 인증 | 실제 호출 | 비고 |
+|--------|:----:|:--------:|------|
+| OpenAI | O | X | 키 유효하나 크레딧 없음 (`insufficient_quota`) |
+| Gemini | O | X | 키 유효하나 무료 일일 한도 소진 (`limit: 0`) |
+| Perplexity | O | O | Pro 세션 토큰 유효 (만료: 2026-03-16) |
+
+### 웹 세션 기반 MCP 검증 (Proxima)
+
+[Proxima](https://github.com/Zen4-bit/Proxima)를 통해 웹 구독(ChatGPT Plus, Gemini, Perplexity Pro) 세션을 MCP로 래핑하여 테스트했습니다.
+
+**단순 테스트 (1+1)**:
+
+| AI | 결과 | 응답 시간 |
+|:---:|:----:|:--------:|
+| Perplexity | O 정상 | 9초 |
+| ChatGPT | O 정상 | 49초 |
+| Gemini | X 캡처 실패 | 24초 |
+
+**리서치 질문 교차검증 테스트** ("2026년 한국 AI 헬스케어 시장 규모와 주요 기업"):
+
+| AI | 결과 | 문제점 |
+|:---:|:----:|--------|
+| Perplexity | 부분 성공 | 질문 주제와 다소 다른 일반 AI 트렌드 응답 |
+| ChatGPT | 실패 | 기존 대화 맥락 오염으로 완전히 다른 주제 응답 |
+| Gemini | 실패 | 응답 캡처 불가 ("No response captured") |
+
+### 교차검증 유효성 분석
+
+**의미 있는 교차검증**:
+- 검색 AI(Perplexity/Gemini) vs 생성 AI(Claude/ChatGPT): 정보 소스가 근본적으로 다름
+- Gemini DR vs Perplexity: 검색 방법론 차이 (범위 vs 정확도)
+
+**의미 약한 교차검증**:
+- ChatGPT vs Claude: 유사한 학습 데이터, 비슷한 편향과 실패 모드
+- LLM이 다른 LLM의 논리를 검증하는 것: 효과 제한적
+
+### 연동 방식별 비교
+
+| 방식 | 비용 | 안정성 | 자동화 적합성 |
+|------|:----:|:------:|:------------:|
+| API 직접 호출 (유료) | 높음 | 높음 | 높음 |
+| 웹 세션 MCP (Proxima) | 무료 | 낮음 | 낮음 |
+| Claude + WebSearch | 포함 | 높음 | 높음 |
+
+### 현실적 결론
+
+1. **웹 세션 방식은 자동화 파이프라인에 부적합**: 대화 맥락 오염, 응답 캡처 실패, 세션 만료 등 안정성 문제
+2. **API 방식은 비용 필요**: OpenAI 최소 $5, Perplexity $5 크레딧 충전 필요
+3. **즉시 사용 가능한 조합**: Claude + WebSearch만으로 핵심 가치(생성 + 팩트체크) 구현 가능
+4. **외부 AI는 점진적 추가 권장**: API 크레딧 확보 후 실질적 가치가 있는 검색 AI(Perplexity/Gemini)부터 연동
 
 ## 교차검증 근거
 

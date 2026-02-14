@@ -1,0 +1,3 @@
+[submodule "proxima"]
+	path = proxima
+	url = https://github.com/Zen4-bit/Proxima.git
