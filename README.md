@@ -4,7 +4,7 @@
 
 하나의 CLI 명령으로 5단계 파이프라인을 자동 실행하여, 각 AI의 강점을 교차 활용한 고품질 문서를 생성합니다. `--type` 옵션으로 사업계획서(`bizplan`)와 연구개발제안서(`rd`)를 모드 전환하여 생성할 수 있습니다.
 
-Proxima 게이트웨이(v3.0.0)를 통해 API 키 없이 브라우저 세션 기반으로 4개 AI를 통합 관리합니다.
+Playwright 영구 프로필 기반으로 API 키 없이 구독형 AI 서비스에 직접 접근합니다. 최초 1회 로그인 후 세션이 자동 유지되며, 만료 시 4단계 자동 복구 체인이 동작합니다.
 
 ### 프로젝트 비전
 
@@ -89,9 +89,9 @@ Proxima 게이트웨이(v3.0.0)를 통해 API 키 없이 브라우저 세션 기
 
 | 메커니즘 | 설명 |
 |---------|------|
-| **Proxima 경유** | 모든 AI 호출은 `localhost:3210`의 Proxima를 통해 처리. API 키 불필요 (브라우저 세션 기반) |
+| **Playwright 직접 접근** | Playwright 영구 프로필로 AI 웹 서비스에 직접 접근. API 키 불필요 (구독형 세션 기반) |
 | **컨텍스트 체인** | 각 단계 결과가 요약되어 다음 단계 입력으로 누적 전달 (Phase 1 -> 2 -> 3 -> 4 -> 5) |
-| **자동 폴백** | AI 응답 실패 시 동일 AI 2회 재시도 후 폴백 AI로 전환 (ChatGPT <-> Claude, Gemini <-> Perplexity) |
+| **4단계 자동 복구** | 세션 만료 시: 리프레시 -> 재로그인(일시정지) -> 지정 폴백 -> Claude 최종 안전망 |
 | **상태 저장/재개** | 매 단계 완료 시 상태를 JSON으로 저장. 실패 시 `resume` 명령으로 마지막 성공 지점부터 재개 |
 | **병렬 실행** | Phase 2, 5에서 asyncio.gather()를 통한 동시 AI 호출로 실행 시간 단축 |
 
@@ -101,7 +101,7 @@ Proxima 게이트웨이(v3.0.0)를 통해 API 키 없이 브라우저 세션 기
 
 사용자는 한국어 또는 영어로 주제를 입력할 수 있습니다. 파이프라인 내부에서는 안정성을 위해 **영어**로 처리하고, 최종 출력은 사용자가 지정한 언어로 변환합니다.
 
-> Proxima DOM 스크래핑 시 한국어 인코딩 이슈가 확인되어, AI 프롬프트는 영어로 구성합니다.
+> AI 웹 인터페이스 DOM 처리 시 한국어 인코딩 이슈가 확인되어, AI 프롬프트는 영어로 구성합니다.
 
 ```
 [사용자 입력]                    [파이프라인 내부]                [최종 출력]
@@ -168,8 +168,14 @@ agent-compare run --topic "AI SaaS" --from-phase 3
 ### 유틸리티 명령
 
 ```bash
-# Proxima 및 AI 프로바이더 상태 확인
+# 최초 설정: 각 AI 서비스 로그인
+agent-compare setup
+
+# Playwright 브라우저 및 AI 세션 상태 확인
 agent-compare check
+
+# 만료된 세션 재로그인
+agent-compare relogin [chatgpt|claude|gemini|perplexity]
 
 # 중단된 파이프라인 재개
 agent-compare resume <session-id>
@@ -218,12 +224,11 @@ output/<session-id>/
 |------|------|------|
 | 언어 | Python | 3.13+ |
 | CLI | Typer + Rich | 0.12+ / 13.0+ |
-| 비동기 HTTP | aiohttp | 3.9+ |
+| AI 게이트웨이 | Playwright | 1.49+ |
 | 데이터 검증 | Pydantic | 2.9+ |
 | 프롬프트 템플릿 | Jinja2 | 3.1+ |
 | 로깅 | structlog | 24.0+ |
 | 테스트 | pytest + pytest-asyncio | 8.0+ / 0.23+ |
-| AI 게이트웨이 | Proxima | v3.0.0 |
 | 패키지 관리 | uv | latest |
 
 ---
@@ -234,9 +239,9 @@ output/<session-id>/
 |------|----------|
 | OS | Windows 10/11 (MINGW64 호환) |
 | Python | 3.13 이상 |
-| Proxima | v3.0.0 이상, `localhost:3210`에서 실행 중 |
-| 네트워크 | localhost 전용 (외부 네트워크 불필요) |
-| AI 세션 | ChatGPT, Claude, Gemini, Perplexity 브라우저 세션 유효 |
+| Playwright | `playwright install chromium` 으로 자동 설치 |
+| 네트워크 | AI 서비스 웹사이트 접근 필요 |
+| AI 구독 | ChatGPT, Claude, Gemini, Perplexity 구독 및 웹 로그인 |
 
 ---
 
@@ -253,14 +258,15 @@ agent-compare/
 │   ├── agents/                     # AI 에이전트 라우팅
 │   │   ├── base.py                 # AsyncAgent Protocol
 │   │   └── router.py              # (단계, 작업) -> AI 매핑
-│   ├── proxima/                    # Proxima Gateway 클라이언트
-│   │   ├── client.py              # AsyncProximaClient (aiohttp)
-│   │   └── models.py              # 요청/응답 모델
+│   ├── gateway/                    # Playwright AI Gateway
+│   │   ├── base.py                # BaseProvider 추상 인터페이스
+│   │   ├── session.py             # SessionManager (4단계 복구 체인)
+│   │   └── {provider}.py          # 서비스별 Provider 어댑터
 │   ├── core/                       # 설정, 이벤트, 예외, 로깅
 │   ├── templates/                  # Jinja2 프롬프트 + 출력 템플릿
 │   └── output/                     # 포매팅 + 파일 내보내기
 ├── tests/                          # 테스트 스위트
-├── proxima/                        # Proxima 게이트웨이 (서브모듈)
+├── docs/plans/                     # 설계 문서
 ├── .moai/
 │   ├── specs/SPEC-PIPELINE-001/    # SPEC 문서
 │   └── project/                    # 프로젝트 설계 문서
@@ -282,55 +288,32 @@ agent-compare/
 
 ## 검증 기록
 
-### 쿠키 임포트 파이프라인 및 3-AI 영어 테스트 (2026-02-15)
+### 아키텍처 진화 기록
 
-초기 테스트에서 발견된 문제(한글 인코딩, 쿠키 인증, Gemini 캡처 실패)를 해결하기 위해 쿠키 임포트 파이프라인을 구축하고 영어 질문으로 재테스트했습니다.
+**Phase 1: Proxima 기반 검증 (2026-02-15)**
+- Proxima(Electron) + 쿠키 임포트로 3-AI 영어 테스트 성공 (Perplexity 8.9s, ChatGPT 4.7s, Gemini 5.4s)
+- 문제 발견: 쿠키 만료 시 수동 갱신 필요 → 자동화 파이프라인과 모순
 
-**해결된 문제**:
-- Chrome Cookie-Editor 익스텐션으로 쿠키 추출 -> Proxima에 자동 임포트
-- Electron 파티션 캐시 충돌 -> 캐시 디렉토리 정리로 해결
-- Gemini 활성화 시 크래시 -> 쿠키 임포트 및 파티션 초기화로 해결
-- 한글 응답 깨짐 -> 영어 질문으로 전환하여 우회
-
-**영어 비교 테스트** ("What are the top 3 advantages of TypeScript over JavaScript?"):
-
-| AI | 결과 | 응답 시간 | 응답 길이 | 특징 |
-|:---:|:----:|:--------:|:--------:|------|
-| Perplexity | 성공 | 8.9초 | 964자 | 질문 에코 포함 (DOM 스크래핑 이슈) |
-| ChatGPT | 성공 | 4.7초 | 611자 | 가장 빠름, 깔끔한 마크다운 |
-| Gemini | 성공 | 5.4초 | 1,116자 | 가장 상세한 응답, H3 포맷 |
-
-### API 키 인증 검증
-
-| 서비스 | 인증 | 실제 호출 | 비고 |
-|--------|:----:|:--------:|------|
-| OpenAI | O | X | 키 유효하나 크레딧 없음 (`insufficient_quota`) |
-| Gemini | O | X | 키 유효하나 무료 일일 한도 소진 |
-| Perplexity | O | O | Pro 세션 토큰 유효 (만료: 2026-03-16) |
-
-### 연동 방식 비교
-
-| 방식 | 비용 | 안정성 | 자동화 적합성 |
-|------|:----:|:------:|:------------:|
-| API 직접 호출 (유료) | 높음 | 높음 | 높음 |
-| 웹 세션 MCP (Proxima) | 무료 | 중간 | 중간 |
-| Claude + WebSearch | 포함 | 높음 | 높음 |
+**Phase 2: Playwright 전환 결정 (2026-02-15)**
+- Proxima 제거, Playwright 영구 프로필 기반으로 전환
+- 4단계 세션 자동 복구 체인 설계 (리프레시 → 재로그인 → 폴백 → Claude 안전망)
+- 상세 설계: `docs/plans/2026-02-15-playwright-gateway-design.md`
 
 ### 알려진 제한사항
 
-- Perplexity DOM 스크래핑 시 질문 텍스트 및 UI 요소가 응답에 포함됨
-- 한글 질문은 인코딩/DOM 스크래핑 이슈로 영어 사용 권장
-- 쿠키 만료 시 재임포트 필요
+- AI 웹 인터페이스 DOM 스크래핑 시 한국어 인코딩 이슈 → AI 프롬프트는 영어 사용
+- AI 서비스 DOM 구조 변경 시 셀렉터 업데이트 필요 (외부 설정 파일로 분리)
+- Perplexity DOM 스크래핑 시 질문 텍스트가 응답에 포함되는 이슈
 
 ---
 
 ## 프로젝트 상태
 
 - [x] 4개 AI 교차검증 완료 (final-summary.md)
-- [x] Proxima 연동 검증 완료 (쿠키 임포트 파이프라인)
-- [x] 3-AI 영어 테스트 성공 (Perplexity, ChatGPT, Gemini)
-- [x] SPEC 문서 작성 완료 (SPEC-PIPELINE-001)
-- [ ] 코어 파이프라인 구현 (L0~L6)
+- [x] Proxima 연동 검증 → 쿠키 만료 문제 확인 → Playwright 전환 결정
+- [x] SPEC 문서 작성 완료 (SPEC-PIPELINE-001, Playwright 기반으로 업데이트)
+- [x] Playwright Gateway 설계 문서 완료
+- [ ] 코어 파이프라인 구현 (L0~L8)
 - [ ] CLI 인터페이스 구현 (L8)
 - [ ] 테스트 스위트 작성 (L9)
 - [ ] 사용자 가이드 문서화

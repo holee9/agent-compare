@@ -19,7 +19,7 @@
 
 ### 1.1 목적
 
-Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGPT, Gemini, Perplexity)를 활용하여 사업계획서 및 연구개발제안서를 자동 생성하는 CLI 파이프라인 도구를 구축한다. 단일 CLI 명령으로 5단계 파이프라인(개념 프레이밍 - 심층 연구 - 전략 수립 - 초안 작성 - 최종 검증)을 순차적/병렬적으로 실행하며, `--type` 옵션으로 사업계획서(bizplan)와 R&D 제안서(rd) 모드를 전환한다. 각 AI의 강점을 교차 활용하여 높은 품질의 결과물을 생산한다.
+Playwright 영구 프로필 기반으로 4개의 AI 에이전트(Claude, ChatGPT, Gemini, Perplexity)의 웹 인터페이스에 직접 접근하여 사업계획서 및 연구개발제안서를 자동 생성하는 CLI 파이프라인 도구를 구축한다. 단일 CLI 명령으로 5단계 파이프라인(개념 프레이밍 - 심층 연구 - 전략 수립 - 초안 작성 - 최종 검증)을 순차적/병렬적으로 실행하며, `--type` 옵션으로 사업계획서(bizplan)와 R&D 제안서(rd) 모드를 전환한다. 각 AI의 강점을 교차 활용하여 높은 품질의 결과물을 생산한다.
 
 **장기 비전**: 이 파이프라인의 출력물(사업계획서/R&D 제안서)은 이후 AI 에이전트들이 실제 프로젝트를 구현해 나가는 입력 SPEC으로 활용된다.
 
@@ -28,7 +28,8 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 **포함 범위 (In-Scope)**:
 - Python CLI 도구 (Typer 기반)
 - 5단계 파이프라인 오케스트레이션 엔진
-- Proxima Gateway 비동기 클라이언트 (aiohttp)
+- Playwright 영구 프로필 기반 AI 게이트웨이 (브라우저 자동화)
+- 4단계 세션 자동 복구 체인 (리프레시 → 재로그인 → 폴백 → Claude 안전망)
 - 단계 간 컨텍스트 전달 메커니즘
 - 파이프라인 상태 관리 및 재개(Resume) 기능
 - Jinja2 기반 프롬프트 템플릿 시스템
@@ -38,7 +39,7 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 
 **제외 범위 (Out-of-Scope)**:
 - 웹 대시보드 (향후 확장으로 분리)
-- API 키 기반 직접 AI 호출 (Proxima 전용)
+- API 키 기반 직접 AI 호출 (구독형만 사용)
 - 모바일 클라이언트
 - 다중 사용자 동시 접속
 - 클라우드 배포 인프라
@@ -60,27 +61,26 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 
 - **운영체제**: Windows 10/11 (MINGW64 호환)
 - **Python**: 3.13+ (asyncio, match-case 지원 필수)
-- **Proxima**: v3.0.0 이상, localhost:3210에서 실행 중
-- **네트워크**: localhost 전용 통신 (외부 네트워크 불필요)
-- **인증**: API 키 불필요 (Proxima 브라우저 세션 기반)
+- **Playwright**: Chromium 브라우저 자동 설치 (`playwright install chromium`)
+- **네트워크**: AI 서비스 웹사이트 접근 (chat.openai.com, claude.ai, gemini.google.com, perplexity.ai)
+- **인증**: API 키 불필요 (구독형 웹 세션 기반, Playwright 영구 프로필로 세션 유지)
 
-### 2.2 Proxima Gateway 환경
+### 2.2 Playwright Gateway 환경
 
-- **엔드포인트**: `POST http://localhost:3210/v1/chat/completions` (OpenAI 호환)
+- **접근 방식**: Playwright persistent browser context로 AI 웹 인터페이스 직접 제어
 - **지원 AI 프로바이더**: ChatGPT, Claude, Gemini, Perplexity
-- **MCP 도구**: 60+ 도구 (검색 8, 코드 7, AI 프로바이더 6, 콘텐츠 8, 분석 5, 파일 2, 윈도우 4, 세션 2, 모니터링 2)
-- **스마트 라우터**: ChatGPT -> Claude -> Perplexity -> Gemini 폴백, 프로바이더당 2회 시도
-- **알려진 제한**: 한국어 쿼리 시 DOM 스크래핑 인코딩 이슈 (AI 프롬프트는 영어 권장)
+- **프로필 저장**: `~/.agent-compare/profiles/{provider}/` (디스크 영속)
+- **세션 관리**: 4단계 자동 복구 체인 (리프레시 → 재로그인 → 지정 폴백 → Claude 최종 안전망)
+- **알려진 제한**: AI 서비스 DOM 구조 변경 시 셀렉터 업데이트 필요 (외부 설정 파일로 분리)
 
-### 2.3 주요 MCP 도구 매핑
+### 2.3 Provider Adapter 매핑
 
-| 파이프라인 단계 | 사용 MCP 도구 | 실행 방식 |
-|---------------|-------------|---------|
-| Phase 1: 개념 프레이밍 | `brainstorm`, `generate_article` | 순차 |
-| Phase 2: 심층 연구 | `deep_search`, `pro_search`, `academic_search`, `fact_check` | **병렬** |
-| Phase 3: 전략/로드맵 | `analyze_document`, `find_stats`, `compare` | 순차 |
-| Phase 4: 초안 작성 | `summarize_url`, `generate_code` (시각화) | 순차+병렬 |
-| Phase 5: 최종 검증 | `fact_check`, `ask_all_ais`, `compare_ais` | 병렬 |
+| AI 프로바이더 | 웹사이트 | 역할 | 폴백 대상 |
+|--------------|---------|------|---------|
+| ChatGPT | chat.openai.com | 발상/프레임워크 (Phase 1A, 3A) | Claude |
+| Claude | claude.ai | 구조화/집필 (Phase 1B, 3B, 4) + 최종 안전망 | ChatGPT |
+| Gemini | gemini.google.com | 심층 리서치 (Phase 2) | Perplexity |
+| Perplexity | perplexity.ai | 팩트체크 (Phase 5) | Claude |
 
 ---
 
@@ -90,9 +90,9 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 
 | ID | 가정 | 신뢰도 | 근거 | 위험(오류 시) | 검증 방법 |
 |----|------|--------|------|-------------|---------|
-| A-1 | Proxima v3.0.0이 localhost:3210에서 안정적으로 실행된다 | Medium | 기존 테스트 결과 확인됨 | 전체 파이프라인 실행 불가 | `agent-compare check` 헬스체크 |
-| A-2 | 4개 AI 프로바이더의 브라우저 세션이 유효하다 | Medium | 쿠키 임포트 파이프라인 검증됨 | 특정 AI 응답 실패 | 폴백 AI 매핑으로 대체 |
-| A-3 | aiohttp가 Proxima REST API와 호환된다 | High | OpenAI 호환 API 표준 | 비동기 통신 실패 | 통합 테스트로 검증 |
+| A-1 | Playwright 영구 프로필로 AI 서비스 세션이 수주~수개월 유지된다 | Medium | 브라우저 프로필 전체 보존 방식 | 세션 만료 시 4단계 복구 체인 실행 | `agent-compare check` 헬스체크 |
+| A-2 | 4개 AI 프로바이더의 웹 인터페이스 DOM 구조가 안정적이다 | Medium | 셀렉터를 외부 설정으로 분리하여 대응 | DOM 변경 시 셀렉터 업데이트 필요 | 셀렉터 검증 자동 테스트 |
+| A-3 | Playwright가 AI 서비스 웹사이트와 호환된다 (봇 감지 우회) | Medium | Playwright는 실제 브라우저 엔진 사용 | 봇 감지 시 수동 재로그인 필요 | 주기적 헬스체크 |
 | A-4 | 단일 파이프라인 실행이 2시간 이내에 완료된다 | Medium | AI 응답 속도에 의존 | 사용자 경험 저하 | 타임아웃 및 단계별 재개 |
 | A-5 | AI 응답이 파싱 가능한 구조화된 텍스트로 반환된다 | Medium | 프롬프트 엔지니어링 의존 | 파싱 실패, 가비지 응답 | 응답 검증 + 재시도 로직 |
 
@@ -102,7 +102,7 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 |----|------|--------|------|
 | B-1 | 사용자는 CLI 기본 사용에 익숙하다 | High | 타겟 사용자 프로필 |
 | B-2 | 사업 계획서 템플릿이 대부분의 사용 사례를 커버한다 | Medium | 3가지 기본 템플릿 제공 |
-| B-3 | 영어 프롬프트가 한국어 입력보다 안정적인 결과를 생성한다 | High | Proxima DOM 스크래핑 이슈 문서화됨 |
+| B-3 | 영어 프롬프트가 한국어 입력보다 안정적인 결과를 생성한다 | High | AI 서비스 DOM 스크래핑 인코딩 이슈 확인됨 |
 
 ---
 
@@ -131,12 +131,12 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 
 #### US-3: AI 에이전트 헬스체크
 
-**WHEN** 사용자가 `agent-compare check` 명령을 실행하면 **THEN** 시스템은 Proxima 게이트웨이 연결 상태와 4개 AI 프로바이더의 가용성을 확인하고 결과를 표시해야 한다.
+**WHEN** 사용자가 `agent-compare check` 명령을 실행하면 **THEN** 시스템은 Playwright 브라우저 상태와 4개 AI 프로바이더의 세션 유효성을 확인하고 결과를 표시해야 한다.
 
 **인수 조건**:
-- Proxima 게이트웨이 연결 확인 (localhost:3210)
-- 각 AI 프로바이더별 상태 표시 (Available / Unavailable / Degraded)
-- 세션 만료 감지 및 갱신 안내
+- Playwright 브라우저 설치 상태 확인
+- 각 AI 프로바이더별 세션 상태 표시 (Available / Expired / Not Setup)
+- 세션 만료 시 `agent-compare relogin` 안내
 - 전체 준비 상태 요약 출력
 
 #### US-4: 설정 관리
@@ -185,18 +185,19 @@ Proxima 게이트웨이(v3.0.0)를 통해 4개의 AI 에이전트(Claude, ChatGP
 - **상태 영속화**: 각 단계 완료 후 `pipeline_state.json`에 저장
 - **이벤트 시스템**: PhaseStarted, AgentCalled, AgentResponded, PhaseCompleted, PipelineFailed 이벤트 발행
 
-#### FR-2: Proxima Gateway 비동기 클라이언트
+#### FR-2: Playwright 기반 AI Gateway
 
-시스템은 **항상** aiohttp 기반 비동기 HTTP 클라이언트를 통해 Proxima Gateway와 통신해야 한다.
+시스템은 **항상** Playwright persistent browser context를 통해 AI 서비스 웹 인터페이스에 직접 접근해야 한다.
 
 상세 요구사항:
-- **AsyncProximaClient 클래스**: aiohttp.ClientSession 기반
-- **OpenAI 호환 요청 형식**: `POST /v1/chat/completions`
-- **모델 매핑**: `claude`, `chatgpt`, `gemini`, `perplexity`
-- **MCP 도구 호출**: `function` 파라미터로 MCP 도구 지정
+- **BaseProvider 추상 클래스**: send_message(), check_session(), login_flow(), detect_response()
+- **서비스별 Provider**: ChatGPTProvider, ClaudeProvider, GeminiProvider, PerplexityProvider
+- **영구 프로필**: `~/.agent-compare/profiles/{provider}/` 에 브라우저 프로필 저장
+- **헤드리스 모드**: 일반 실행 시 headless, 로그인 시 headed (브라우저 창 표시)
 - **타임아웃**: 요청당 120초 기본값, 설정 가능
-- **연결 풀링**: aiohttp 커넥터 풀 활용
-- **에러 핸들링**: HTTP 에러, 타임아웃, 연결 실패 각각 처리
+- **DOM 셀렉터 외부화**: `~/.agent-compare/selectors.yaml`로 분리 (코드 수정 없이 업데이트)
+- **4단계 세션 복구 체인**: 리프레시 → 재로그인(파이프라인 일시정지, 2분 타임아웃) → 지정 폴백 → Claude 최종 안전망
+- **에러 핸들링**: 세션 만료, DOM 변경, 봇 감지, 네트워크 실패 각각 처리
 
 #### FR-3: 단계 간 컨텍스트 전달
 
@@ -234,7 +235,13 @@ agent-compare run [OPTIONS]
   --output-dir PATH   출력 디렉토리
 
 agent-compare check
-  Proxima 및 AI 프로바이더 헬스체크
+  Playwright 브라우저 및 AI 세션 헬스체크
+
+agent-compare setup
+  최초 설정: 브라우저 창 열림 → 각 AI 로그인 → 프로필 저장
+
+agent-compare relogin [PROVIDER]
+  만료된 세션 재로그인 (provider 미지정 시 전체)
 
 agent-compare status [SESSION_ID]
   파이프라인 실행 상태 조회
@@ -298,8 +305,8 @@ agent-compare config set KEY VALUE
 
 #### NFR-5: 보안
 
-- API 키 불필요: Proxima 브라우저 세션 기반 인증
-- localhost 전용: 외부 네트워크 노출 없음
+- API 키 불필요: 구독형 웹 세션 기반 인증 (Playwright 영구 프로필)
+- 프로필 보안: `~/.agent-compare/profiles/` 로컬 저장, VCS 제외
 - 입력 검증: Pydantic 모델로 모든 사용자 입력 및 AI 응답 검증
 - 민감 데이터: 사업 계획서 내용은 로컬에만 저장
 
@@ -324,11 +331,11 @@ agent-compare config set KEY VALUE
 +--------+---------+     +--------+---------+
                                   |
                          +--------v---------+
-                         | AsyncProximaClient|  <- aiohttp 비동기 클라이언트
+                         | PlaywrightGateway |  <- Playwright 영구 프로필
                          +--------+---------+
                                   |
                          +--------v---------+
-                         | Proxima Gateway  |  <- localhost:3210
+                         | AI Web Services  |  <- 직접 브라우저 접근
                          | (ChatGPT/Claude/ |
                          |  Gemini/Perplexity)|
                          +------------------+
@@ -356,10 +363,15 @@ src/
 │   ├── gemini.py                    # Gemini 에이전트 설정
 │   ├── perplexity.py                # Perplexity 에이전트 설정
 │   └── router.py                    # (단계, 작업) -> AI 에이전트 매핑
-├── proxima/
+├── gateway/
 │   ├── __init__.py
-│   ├── client.py                    # AsyncProximaClient (aiohttp)
-│   └── models.py                    # ProximaRequest, ProximaResponse
+│   ├── base.py                     # BaseProvider (추상 인터페이스)
+│   ├── chatgpt.py                  # ChatGPTProvider (chat.openai.com)
+│   ├── claude.py                   # ClaudeProvider (claude.ai)
+│   ├── gemini.py                   # GeminiProvider (gemini.google.com)
+│   ├── perplexity.py               # PerplexityProvider (perplexity.ai)
+│   ├── session.py                  # SessionManager (4단계 복구 체인)
+│   └── models.py                   # GatewayRequest, GatewayResponse
 ├── core/
 │   ├── __init__.py
 │   ├── config.py                    # Pydantic 기반 설정 관리
@@ -398,7 +410,7 @@ src/
 
 | # | 결정 사항 | 선택 | 근거 | 대안 |
 |---|---------|------|------|------|
-| D-1 | HTTP 클라이언트 | aiohttp (비동기) | Phase 2/4/5 병렬 실행 필수, Proxima SDK는 동기 전용 | requests (동기), httpx (비동기 대안) |
+| D-1 | AI 게이트웨이 | Playwright (영구 프로필) | API 키 불필요, 구독형만 사용, 세션 자동 유지 | Proxima (쿠키 만료 문제), 직접 API (비용 문제) |
 | D-2 | 상태 관리 | JSON 파일 영속화 | 외부 DB 의존성 없음, resume 기능 지원 | SQLite, Redis |
 | D-3 | AI 에이전트 구현 | 설정 모듈 (서브클래스 아님) | 경량, 프롬프트 템플릿 기반 | ABC 상속 패턴 |
 | D-4 | 프롬프트 관리 | Jinja2 외부화 | 코드 수정 없이 프롬프트 변경, 다국어 지원 | Python 문자열, YAML |
@@ -468,7 +480,7 @@ class PipelineSession:
 | Layer | 이름 | 내용 | 산출물 | 의존성 |
 |-------|------|------|--------|--------|
 | **L0** | Foundation | pyproject.toml, 프로젝트 구조, 설정, 예외, 이벤트 | 프로젝트 뼈대 | 없음 |
-| **L1** | Proxima Client | aiohttp 래퍼, 요청/응답 모델, 에러 핸들링 | `proxima/` | L0 |
+| **L1** | Playwright Gateway | BaseProvider, 4개 서비스 어댑터, SessionManager, 복구 체인 | `gateway/` | L0 |
 | **L2** | Data Models | PhaseResult, PipelineSession, AgentResponse | `core/models.py`, `pipeline/state.py` | L0 |
 | **L3** | Agent Layer | 에이전트 프로토콜, 4개 AI 설정, 라우터 | `agents/` | L1, L2 |
 | **L4** | Templates | Jinja2 프롬프트 템플릿, 출력 템플릿 | `templates/` | L2 (병렬 가능) |
@@ -481,7 +493,7 @@ class PipelineSession:
 ### 6.2 마일스톤 (우선순위 기반)
 
 **Primary Goal (핵심 기능)**:
-- L0-L2: Foundation + Proxima Client + Data Models
+- L0-L2: Foundation + Playwright Gateway + Data Models
 - L3: Agent Layer (4개 AI 에이전트 + 라우터)
 - L5: 5개 Pipeline Phase 모듈
 - L6: Orchestrator (상태 머신 + 이벤트)
@@ -513,8 +525,8 @@ class PipelineSession:
 
 | ID | 엣지 케이스 | 영향 | 대응 전략 |
 |----|-----------|------|---------|
-| EC-1 | Proxima가 실행되지 않음 | 파이프라인 시작 불가 | `check` 명령으로 사전 감지, 명확한 에러 메시지 + Proxima 시작 가이드 |
-| EC-2 | AI 프로바이더 세션 만료 | 특정 AI 응답 실패 | 폴백 AI 매핑으로 대체, 세션 갱신 안내 메시지 |
+| EC-1 | Playwright 브라우저 미설치 | 파이프라인 시작 불가 | `check` 명령으로 사전 감지, `playwright install chromium` 안내 |
+| EC-2 | AI 프로바이더 세션 만료 | 특정 AI 응답 실패 | 4단계 복구 체인: 리프레시 → 재로그인(일시정지) → 폴백 → Claude 안전망 |
 | EC-3 | AI 불완전/가비지 응답 | 다음 단계 입력 품질 저하 | 응답 유효성 검사 (길이, 구조, 키워드), 재시도 + 폴백 |
 | EC-4 | 네트워크 연결 중단 | 진행 중인 요청 실패 | 자동 재연결 3회 시도, 상태 저장 후 resume 안내 |
 | EC-5 | 컨텍스트 윈도우 오버플로 | AI 토큰 한도 초과 | 이전 단계 결과 요약 전략, 컨텍스트 크기 모니터링 |
@@ -527,10 +539,10 @@ class PipelineSession:
 
 | ID | 리스크 | 심각도 | 발생 가능성 | 완화 전략 |
 |----|-------|--------|-----------|---------|
-| R-1 | Proxima 안정성 (2시간+ 세션 유지) | HIGH | Medium | 단계별 상태 저장 + resume 기능, 헬스체크 주기 실행 |
+| R-1 | AI 서비스 세션 만료 | MEDIUM | Medium | Playwright 영구 프로필 + 4단계 자동 복구 체인 + resume 기능 |
 | R-2 | AI 응답 품질 편차 | MEDIUM | High | 다중 AI 교차검증, 프롬프트 엔지니어링 최적화, 응답 품질 점수 산정 |
 | R-3 | 컨텍스트 누적으로 토큰 한도 초과 | MEDIUM | Medium | 단계별 요약 전략, 컨텍스트 윈도우 모니터링, 필수 정보만 전달 |
-| R-4 | 플랫폼 종속성 (Proxima) | LOW | Low | 추상화 계층 (AsyncAgent Protocol), 향후 직접 API 지원 가능하도록 설계 |
+| R-4 | AI 서비스 DOM 구조 변경 | MEDIUM | Medium | 셀렉터 외부 설정 파일 분리 (selectors.yaml), BaseProvider 추상화 |
 | R-5 | 프롬프트 엔지니어링 노력 | MEDIUM | High | Jinja2 외부화로 코드 수정 없이 반복 개선, A/B 테스트 프레임워크 고려 |
 
 ---
@@ -542,8 +554,8 @@ class PipelineSession:
 | 제약 | 상세 |
 |------|------|
 | 운영체제 | Windows 10/11 (주 대상), MINGW64 호환 |
-| 네트워크 | localhost 전용 (Proxima 통신) |
-| 인증 | API 키 불필요 (Proxima 브라우저 세션) |
+| 네트워크 | AI 서비스 웹사이트 접근 필요 |
+| 인증 | API 키 불필요 (구독형 웹 세션, Playwright 영구 프로필) |
 | 동시 사용자 | 단일 사용자 (파이프라인 인스턴스 1개) |
 
 ### 8.2 기술 제약
@@ -551,15 +563,15 @@ class PipelineSession:
 | 제약 | 상세 |
 |------|------|
 | Python | 3.13+ 필수 (match-case, asyncio 개선 활용) |
-| Proxima | v3.0.0+ 필수, localhost:3210 실행 중 |
+| Playwright | chromium 브라우저 설치 (`playwright install chromium`) |
 | AI 프로바이더 | 4개 고정 (ChatGPT, Claude, Gemini, Perplexity) |
-| 한국어 프롬프트 | DOM 스크래핑 인코딩 이슈로 AI 프롬프트는 영어 권장 |
+| 한국어 프롬프트 | AI 웹 인터페이스 DOM 인코딩 이슈로 AI 프롬프트는 영어 권장 |
 
 ### 8.3 외부 의존성
 
 | 의존성 | 버전 | 역할 | 대체 가능 여부 |
 |--------|------|------|-------------|
-| aiohttp | 3.9+ | 비동기 HTTP 클라이언트 | httpx (대안) |
+| playwright | 1.49+ | 브라우저 자동화 (AI 게이트웨이) | selenium (대안) |
 | typer | 0.12+ | CLI 프레임워크 | click (대안) |
 | pydantic | 2.9+ | 데이터 검증/설정 | dataclasses (제한적) |
 | jinja2 | 3.1+ | 프롬프트 템플릿 | string.Template (제한적) |
@@ -590,7 +602,7 @@ class PipelineSession:
 ### 9.3 테스트 우선순위
 
 **Priority High (먼저 작성)**:
-1. AsyncProximaClient - 핵심 외부 통신
+1. PlaywrightGateway + SessionManager - 핵심 AI 접근 계층
 2. PipelineOrchestrator - 상태 머신 전이
 3. AgentRouter - AI 매핑 및 폴백
 4. PhaseResult 컨텍스트 전달
@@ -611,13 +623,13 @@ class PipelineSession:
 | 유형 | 범위 | 도구 |
 |------|------|------|
 | 단위 테스트 | 개별 함수/클래스 | pytest, pytest-asyncio |
-| 통합 테스트 | 모듈 간 상호작용 | pytest + Mock Proxima |
-| E2E 테스트 | 전체 파이프라인 | pytest + Proxima 목 서버 |
+| 통합 테스트 | 모듈 간 상호작용 | pytest + Mock Provider |
+| E2E 테스트 | 전체 파이프라인 | pytest + Mock Gateway |
 | 스냅샷 테스트 | 출력 포맷 일관성 | pytest-snapshot |
 
 ### 9.5 목(Mock) 전략
 
-- **Proxima Gateway**: aiohttp 목 서버로 AI 응답 시뮬레이션
+- **AI Gateway**: Mock Provider로 AI 응답 시뮬레이션 (Playwright 실행 불필요)
 - **AI 응답**: 사전 정의된 JSON 픽스처 (성공/실패/부분 응답)
 - **파일 시스템**: tmp_path 픽스처로 격리된 테스트 디렉토리
 
@@ -636,7 +648,7 @@ class PipelineSession:
 
 - AsyncAgent Protocol을 통한 새 프로바이더 추가 용이
 - 설정 파일 수정만으로 에이전트 매핑 변경
-- Proxima 업데이트 시 자동 지원
+- BaseProvider 상속으로 새 프로바이더 추가 용이
 
 ### 10.3 국제화 (i18n)
 
@@ -659,7 +671,7 @@ class PipelineSession:
 |-----|------|
 | SPEC-PIPELINE-001 | product.md, structure.md, tech.md |
 | FR-1 | orchestrator.py, state.py |
-| FR-2 | proxima/client.py, proxima/models.py |
+| FR-2 | gateway/base.py, gateway/session.py, gateway/{provider}.py |
 | FR-3 | pipeline/state.py, orchestrator.py |
 | FR-4 | main.py |
 | FR-5 | agents/router.py, orchestrator.py |
@@ -667,7 +679,7 @@ class PipelineSession:
 | NFR-2 | orchestrator.py, state.py |
 | NFR-3 | main.py (Rich), templates/ |
 | NFR-4 | agents/base.py (Protocol), core/events.py |
-| NFR-5 | proxima/client.py, core/config.py |
+| NFR-5 | gateway/session.py, core/config.py |
 
 ---
 
