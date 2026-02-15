@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from uuid import uuid4
 
-from src.core.models import (
+from core.models import (
     AgentResponse,
     AgentType,
     DocumentType,

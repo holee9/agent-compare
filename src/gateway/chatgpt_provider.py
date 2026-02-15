@@ -10,6 +10,7 @@ from pydantic import Field
 
 from src.core.exceptions import GatewayException, ErrorCode
 from src.gateway.base import BaseProvider, GatewayRequest, GatewayResponse
+from src.core.models import AgentType
 
 
 class ChatGPTProvider(BaseProvider):
@@ -18,6 +19,8 @@ class ChatGPTProvider(BaseProvider):
 
     Handles login, message sending, and session management.
     """
+
+    agent_type: AgentType = AgentType.CHATGPT
 
     def __init__(
         self,

@@ -1,14 +1,12 @@
-"""
-Pipeline orchestration modules.
-"""
+"""Pipeline orchestration modules."""
 
-from pathlib import Path
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-from src.core.exceptions import PipelineException, ErrorCode
+from src.agents.router import AgentRouter, PhaseTask
 from src.core.models import (
+    AgentResponse,
+    AgentType,
     PhaseResult,
     PhaseStatus,
     PipelineConfig,
@@ -16,10 +14,11 @@ from src.core.models import (
     PipelineState,
     create_phase_result,
 )
-from src.agents.router import AgentRouter, AgentMapping, PhaseTask
 from src.gateway.session import SessionManager
+from src.output.formatter import FileExporter
 from src.templates.manager import TemplateManager
-from src.output.formatter import MarkdownFormatter, FileExporter
+
+TOTAL_PHASES = 5
 
 
 class PipelineOrchestrator:
@@ -46,6 +45,41 @@ class PipelineOrchestrator:
         """Create a new pipeline session."""
         return PipelineSession(config=config)
 
+    @staticmethod
+    def get_phase_tasks(phase_number: int) -> list[PhaseTask]:
+        """Return configured tasks for each phase."""
+        phase_tasks: dict[int, list[PhaseTask]] = {
+            1: [PhaseTask.BRAINSTORM_CHATGPT, PhaseTask.VALIDATE_CLAUDE],
+            2: [PhaseTask.DEEP_SEARCH_GEMINI, PhaseTask.FACT_CHECK_PERPLEXITY],
+            3: [PhaseTask.SWOT_CHATGPT, PhaseTask.NARRATIVE_CLAUDE],
+            4: [PhaseTask.BUSINESS_PLAN_CLAUDE, PhaseTask.OUTLINE_CHATGPT, PhaseTask.CHARTS_GEMINI],
+            5: [PhaseTask.VERIFY_PERPLEXITY, PhaseTask.FINAL_REVIEW_CLAUDE, PhaseTask.POLISH_CLAUDE],
+        }
+        return phase_tasks.get(phase_number, [])
+
+    def _save_phase_result(self, exporter: FileExporter | None, result: PhaseResult) -> None:
+        if exporter is None:
+            return
+        exporter.save_json(f"phase{result.phase_number}_results", result.model_dump(mode="json"))
+
+    def _save_pipeline_state(self, exporter: FileExporter | None, session: PipelineSession) -> None:
+        if exporter is None:
+            return
+        exporter.save_json("pipeline_state", session.model_dump(mode="json"))
+
+    @staticmethod
+    def _build_template_name(phase_number: int, task: PhaseTask) -> str:
+        return f"phase_{phase_number}/{task.value}"
+
+    @staticmethod
+    def _finalize_session_state(session: PipelineSession) -> None:
+        if session.state == PipelineState.FAILED:
+            return
+        if session.current_phase == TOTAL_PHASES:
+            session.state = PipelineState.COMPLETED
+        else:
+            session.state = PipelineState.FAILED
+
     async def execute_phase(self, session: PipelineSession, phase_number: int) -> PhaseResult:
         """
         Execute a single pipeline phase.
@@ -57,14 +91,63 @@ class PipelineOrchestrator:
         Returns:
             PhaseResult with execution results
         """
-        # TODO: Implement phase execution logic
-        # 1. Get phase template
-        # 2. Render prompts
-        # 3. Call agents via router
-        # 4. Aggregate results
-        # 5. Update session state
+        tasks = self.get_phase_tasks(phase_number)
+        phase_name = f"Phase {phase_number}"
+        result = create_phase_result(phase_number, phase_name)
 
-        return create_phase_result(phase_number, f"Phase {phase_number}")
+        if not tasks:
+            result.status = PhaseStatus.SKIPPED
+            result.completed_at = datetime.now()
+            return result
+
+        responses: list[AgentResponse] = []
+        failed = False
+
+        for task in tasks:
+            prompt = self.template_manager.render_prompt(
+                template_name=self._build_template_name(phase_number, task),
+                context={
+                    "topic": session.config.topic,
+                    "doc_type": session.config.doc_type.value,
+                    "language": session.config.language,
+                },
+            )
+
+            try:
+                response = await self.agent_router.execute(
+                    phase=phase_number,
+                    task=task,
+                    prompt=prompt,
+                    doc_type=session.config.doc_type,
+                )
+                normalized_response = AgentResponse(
+                    agent_name=AgentType(response.agent_name),
+                    task_name=response.task_name,
+                    content=response.content,
+                    tokens_used=response.tokens_used,
+                    response_time=response.response_time,
+                    success=response.success,
+                    error=response.error,
+                )
+                responses.append(normalized_response)
+                if not normalized_response.success:
+                    failed = True
+            except Exception as exc:  # pragma: no cover - covered through error path assertions
+                failed = True
+                responses.append(
+                    AgentResponse(
+                        agent_name=AgentType.CHATGPT,
+                        task_name=task.value,
+                        content="",
+                        success=False,
+                        error=str(exc),
+                    )
+                )
+
+        result.ai_responses = responses
+        result.status = PhaseStatus.FAILED if failed else PhaseStatus.COMPLETED
+        result.completed_at = datetime.now()
+        return result
 
     async def run_pipeline(self, config: PipelineConfig) -> PipelineSession:
         """
@@ -78,23 +161,24 @@ class PipelineOrchestrator:
         """
         session = self.create_session(config)
         self.current_session = session
+        output_dir = config.output_dir / session.session_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+        exporter = FileExporter(output_dir)
 
-        # Execute phases sequentially
-        for phase_num in range(1, 6):
-            result = await self.execute_phase(session, phase_num)
-            session.add_result(result)
+        try:
+            for phase_num in range(1, TOTAL_PHASES + 1):
+                result = await self.execute_phase(session, phase_num)
+                session.add_result(result)
+                self._save_phase_result(exporter, result)
 
-            # Update state
-            if result.status == PhaseStatus.COMPLETED:
-                session.state = PipelineState(f"phase_{phase_num}")
-            elif result.status == PhaseStatus.FAILED:
-                session.state = PipelineState.FAILED
-                break
+                if result.status in {PhaseStatus.COMPLETED, PhaseStatus.SKIPPED}:
+                    session.state = PipelineState(f"phase_{phase_num}")
+                elif result.status == PhaseStatus.FAILED:
+                    session.state = PipelineState.FAILED
+                    break
 
-        # Final state
-        if session.current_phase == 5:
-            session.state = PipelineState.COMPLETED
-        else:
-            session.state = PipelineState.FAILED
+            self._finalize_session_state(session)
+        finally:
+            self._save_pipeline_state(exporter, session)
 
         return session

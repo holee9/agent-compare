@@ -4,11 +4,11 @@ Tests for gateway modules.
 
 import pytest
 
-from src.gateway.base import BaseProvider
-from src.gateway.chatgpt_provider import ChatGPTProvider
-from src.gateway.claude_provider import ClaudeProvider
-from src.gateway.gemini_provider import GeminiProvider
-from src.gateway.perplexity_provider import PerplexityProvider
+from gateway.base import BaseProvider
+from gateway.chatgpt_provider import ChatGPTProvider
+from gateway.claude_provider import ClaudeProvider
+from gateway.gemini_provider import GeminiProvider
+from gateway.perplexity_provider import PerplexityProvider
 
 
 class TestBaseProvider:

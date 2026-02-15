@@ -4,7 +4,7 @@ Tests for template manager.
 
 import pytest
 
-from src.templates.manager import TemplateManager
+from templates.manager import TemplateManager
 
 
 class TestTemplateManager:

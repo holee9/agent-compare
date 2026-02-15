@@ -159,6 +159,56 @@ KO 입력 --+-- EN 프롬프트 --- EN 처리 (AI) ---+-- KO 출력
 
 ---
 
+## 설치 및 설정
+
+### 사전 요구사항
+
+| 항목 | 요구사항 |
+|------|----------|
+| OS | Windows 10/11, macOS, Linux |
+| Python | 3.13 이상 |
+| 브라우저 | Chrome (Windows) 또는 Chromium (macOS/Linux) |
+| AI 구독 | ChatGPT, Claude, Gemini, Perplexity 유료 구독 |
+
+### 설치 방법
+
+```bash
+# 1. 리포지토리 클론
+git clone <repository-url>
+cd agent-compare
+
+# 2. Python 가상환경 생성 (권장)
+python -m venv .venv
+
+# 3. 가상환경 활성화
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+# 4. 의존성 설치
+pip install -e .
+
+# 5. Playwright 브라우저 설치
+playwright install chromium
+
+# 6. 초기 설정 (AI 서비스 로그인)
+python -m src.main setup
+```
+
+### 실행 방법
+
+**현재는 clone된 폴더에서 직접 실행**해야 합니다:
+
+```bash
+# clone된 폴더 내에서 실행
+python -m src.main run --topic "AI SaaS 플랫폼"
+```
+
+> **참고**: 향후 `pip install aigenflow`로 전역 설치 후 어디서든 `AigenFlow` 명령으로 사용 가능하도록 개선 예정입니다.
+
+---
+
 ## CLI 사용법
 
 ### 기본 명령

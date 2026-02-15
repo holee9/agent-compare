@@ -7,15 +7,11 @@ Implements the routing table defined in SPEC-PIPELINE-001.
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from src.core.exceptions import AgentException, ErrorCode
+from src.core.exceptions import AgentException
 from src.core.models import AgentType, DocumentType
 from src.agents.base import AsyncAgent, AgentRequest, AgentResponse
-from src.agents.chatgpt_agent import ChatGPTAgent
-from src.agents.claude_agent import ClaudeAgent
-from src.agents.gemini_agent import GeminiAgent
-from src.agents.perplexity_agent import PerplexityAgent
 
 
 class PhaseTask(str, Enum):
@@ -104,8 +100,7 @@ class AgentRouter:
 
         raise AgentException(
             message=f"No agent registered for {mapping.agent}",
-            details={"mapping": mapping.dict()},
-            error_code=ErrorCode.AGENT_CALL_FAILED,
+            details={"mapping": mapping.model_dump()},
         )
 
     async def execute(self, phase: int, task: PhaseTask, prompt: str, doc_type: DocumentType) -> AgentResponse:
@@ -121,21 +116,32 @@ class AgentRouter:
         Returns:
             AgentResponse
         """
-        # Find mapping
+        agent_type = self.mapping.get((phase, task, doc_type))
+        if agent_type is None:
+            raise AgentException(
+                message=f"No mapping found for phase={phase}, task={task.value}, doc_type={doc_type.value}",
+                details={"phase": phase, "task": task.value, "doc_type": doc_type.value},
+            )
+
         mapping = AgentMapping(
             phase=phase,
             task=task,
             doc_type=doc_type,
+            agent=agent_type,
         )
 
         # Get agent
         agent = self.get_agent(mapping)
 
         # Create request
+        timeout_seconds = 120
+        if self.settings is not None and hasattr(self.settings, "timeout_seconds"):
+            timeout_seconds = self.settings.timeout_seconds
+
         request = AgentRequest(
             task_name=task.value,
             prompt=prompt,
-        timeout=self.settings.timeout_seconds,
+            timeout=timeout_seconds,
         )
 
         # Execute

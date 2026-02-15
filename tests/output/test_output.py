@@ -4,7 +4,7 @@ Tests for output modules.
 
 import pytest
 
-from src.output.formatter import FileExporter, MarkdownFormatter
+from output.formatter import FileExporter, MarkdownFormatter
 
 
 class TestMarkdownFormatter:

@@ -1,8 +1,7 @@
 """
-Core data models for agent-compare pipeline.
+Core data models for AigenFlow pipeline.
 """
 
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -60,9 +59,6 @@ class AgentResponse(BaseModel):
     error: str | None = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
 
 class PhaseResult(BaseModel):
     phase_number: int
@@ -73,9 +69,6 @@ class PhaseResult(BaseModel):
     artifacts: dict[str, Any] = Field(default_factory=dict)
     started_at: datetime = Field(default_factory=datetime.now)
     completed_at: datetime | None = None
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class PipelineConfig(BaseModel):
@@ -109,6 +102,18 @@ class PipelineSession(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
     current_phase: int = 0
 
+    @field_validator("config", mode="before")
+    @classmethod
+    def normalize_config(cls, value: Any) -> PipelineConfig | Any:
+        """Accept equivalent PipelineConfig objects loaded from a different module path."""
+        if isinstance(value, PipelineConfig):
+            return value
+        if hasattr(value, "model_dump"):
+            return PipelineConfig(**value.model_dump())
+        if isinstance(value, dict):
+            return PipelineConfig(**value)
+        return value
+
     def add_result(self, result: PhaseResult) -> None:
         self.results.append(result)
         self.current_phase = result.phase_number
@@ -119,9 +124,6 @@ class PipelineSession(BaseModel):
             if result.phase_number == phase_number:
                 return result
         return None
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 def create_phase_result(phase_number: int, phase_name: str) -> PhaseResult:

@@ -4,7 +4,7 @@ Tests for gateway models.
 
 import pytest
 
-from src.gateway.models import GatewayRequest, GatewayResponse
+from gateway.models import GatewayRequest, GatewayResponse
 
 
 class TestGatewayRequest:

@@ -1,5 +1,5 @@
 """
-Main CLI entry point for agent-compare.
+Main CLI entry point for AigenFlow.
 """
 
 import sys
@@ -20,11 +20,11 @@ def main():
     console = Console()
 
     # Simple greeting for now
-    console.print("[bold green]agent-compare v0.1.0[/bold green]")
+    console.print("[bold green]aigenflow v0.1.0[/bold green]")
     console.print("Multi-AI Pipeline CLI Tool for Automated Business Plan Generation")
     console.print("")
     console.print("[dim]Usage:[/dim]")
-    console.print("[dim]  agent-compare run --topic \"Your topic here\"[/dim]")
+    console.print("[dim]  aigenflow run --topic \"Your topic here\"[/dim]")
     console.print("")
     console.print("[bold cyan]Options:[/bold cyan]")
     console.print("  run        Execute pipeline and generate document")

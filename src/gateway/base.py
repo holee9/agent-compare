@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.core.models import AgentType
+
 
 class GatewayRequest(BaseModel):
     """Request to send to AI provider."""
@@ -38,6 +40,8 @@ class BaseProvider(ABC):
     Each provider (ChatGPT, Claude, Gemini, Perplexity) inherits from this
     and implements the abstract methods.
     """
+
+    agent_type: AgentType = None  # To be overridden by subclasses
 
     def __init__(self, profile_dir: Path, headless: bool = True) -> None:
         """Initialize provider with profile directory and headless mode."""

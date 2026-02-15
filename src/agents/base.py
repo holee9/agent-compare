@@ -3,22 +3,11 @@ Base agent protocol and utilities.
 """
 
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from src.core.exceptions import AgentException, ErrorCode
-from src.gateway.models import GatewayRequest, GatewayResponse
-
-
-class AgentType(str, Enum):
-    """Supported AI agent types."""
-
-    CHATGPT = "chatgpt"
-    CLAUDE = "claude"
-    GEMINI = "gemini"
-    PERPLEXITY = "perplexity"
+from src.core.models import AgentType
+from src.gateway.models import GatewayResponse
 
 
 class AgentRequest(BaseModel):
@@ -76,10 +65,13 @@ class AsyncAgent(ABC):
         Returns:
             AgentResponse with agent metadata
         """
+        # Get agent type from gateway
+        agent_type = self.gateway.agent_type if hasattr(self.gateway, "agent_type") else None
+
         # Validate response
         if not response.success:
             return AgentResponse(
-                agent_name=self.gateway.__class__.__name__,
+                agent_name=agent_type if agent_type else AgentType.CHATGPT,
                 task_name="unknown",
                 content="",
                 success=False,
@@ -88,7 +80,7 @@ class AsyncAgent(ABC):
 
         # Convert to AgentResponse
         return AgentResponse(
-            agent_name=self.gateway.__class__.__name__,
+            agent_name=agent_type if agent_type else AgentType.CHATGPT,
             task_name="unknown",  # Will be updated by caller
             content=response.content,
             tokens_used=response.tokens_used,

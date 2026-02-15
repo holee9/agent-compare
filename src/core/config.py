@@ -1,26 +1,24 @@
 """
-Configuration management for agent-compare pipeline.
+Configuration management for AigenFlow pipeline.
 """
 
 from pathlib import Path
 from typing import Literal
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class AgentCompareSettings(BaseSettings):
-    """Application settings for agent-compare."""
+class AigenFlowSettings(BaseSettings):
+    """Application settings for AigenFlow."""
 
-    model_config = ConfigDict(extra="ignore")
-
-    app_name: str = "agent-compare"
+    app_name: str = "aigenflow"
     debug: bool = False
     log_level: str = "INFO"
     log_format: Literal["json", "pretty"] = "pretty"
 
     output_dir: Path = Field(default_factory=lambda: Path("output"))
-    profiles_dir: Path = Field(default_factory=lambda: Path("~/.agent-compare/profiles").expanduser())
+    profiles_dir: Path = Field(default_factory=lambda: Path("~/.aigenflow/profiles").expanduser())
     templates_dir: Path = Field(default_factory=lambda: Path("templates"))
 
     max_retries: int = 2
@@ -34,11 +32,23 @@ class AgentCompareSettings(BaseSettings):
     enable_parallel_phases: bool = True
     enable_event_tracking: bool = True
 
-    # API Keys (ignored in settings if not provided)
-    openai_api_key: str | None = None
-    gemini_api_key: str | None = None
-    perplexity_session_token: str | None = None
-    perplexity_csrf_token: str | None = None
+    # API/session secrets from environment variables
+    openai_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENAI_API_KEY", "AC_OPENAI_API_KEY"),
+    )
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GEMINI_API_KEY", "AC_GEMINI_API_KEY"),
+    )
+    perplexity_session_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("PERPLEXITY_SESSION_TOKEN", "AC_PERPLEXITY_SESSION_TOKEN"),
+    )
+    perplexity_csrf_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("PERPLEXITY_CSRF_TOKEN", "AC_PERPLEXITY_CSRF_TOKEN"),
+    )
 
     @field_validator("output_dir", "profiles_dir", "templates_dir")
     def create_directories(cls, v: Path) -> Path:
@@ -49,21 +59,21 @@ class AgentCompareSettings(BaseSettings):
     def normalize_log_level(cls, v: str) -> str:
         return v.upper()
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         extra="ignore",
-        env_prefix="AC",
+        env_prefix="AC_",
         env_file=".env",
         env_nested_delimiter="__",
         case_sensitive=False,
     )
 
 
-def get_settings() -> AgentCompareSettings:
+def get_settings() -> AigenFlowSettings:
     """Get application settings instance."""
-    return AgentCompareSettings()
+    return AigenFlowSettings()
 
 
-def get_output_dir(session_id: str, settings: AgentCompareSettings | None = None) -> Path:
+def get_output_dir(session_id: str, settings: AigenFlowSettings | None = None) -> Path:
     """Get output directory for a specific session."""
     if settings is None:
         settings = get_settings()

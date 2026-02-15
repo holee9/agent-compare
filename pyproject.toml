@@ -1,5 +1,5 @@
 [project]
-name = "agent-compare"
+name = "aigenflow"
 version = "0.1.0"
 description = "Multi-AI Pipeline CLI Tool for Automated Business Plan Generation"
 authors = [
@@ -10,9 +10,9 @@ requires-python = ">=3.13"
 license = {text = "Apache-2.0"}
 
 [project.urls]
-Homepage = "https://github.com/drakechung/agent-compare"
-Repository = "https://github.com/drakechung/agent-compare.git"
-Issues = "https://github.com/drakechung/agent-compare/issues"
+Homepage = "https://github.com/holee9/aigenflow"
+Repository = "https://github.com/holee9/aigenflow.git"
+Issues = "https://github.com/holee9/aigenflow/issues"
 
 [project.scripts]
 dev = "agent-compare run --help"

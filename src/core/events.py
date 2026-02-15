@@ -7,7 +7,11 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
+
+from src.core.logger import get_logger, redact_secrets
+
+logger = get_logger(__name__)
 
 
 class EventType(str, Enum):
@@ -40,12 +44,6 @@ class BaseEvent(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     data: dict[str, Any] = Field(default_factory=dict)
     session_id: str | None = None
-
-    model_config = ConfigDict(
-        json_encoders={
-            datetime: lambda v: v.isoformat(),
-        }
-    )
 
 
 class PipelineStartedEvent(BaseEvent):
@@ -104,8 +102,14 @@ class EventBus:
         for handler in self._handlers:
             try:
                 handler.handle(event)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "event_handler_failed",
+                    handler=handler.__class__.__name__,
+                    event_type=event.event_type.value,
+                    error_type=type(exc).__name__,
+                    error=redact_secrets(str(exc), key_hint="error"),
+                )
 
 
 _event_bus: EventBus | None = None

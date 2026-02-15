@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from src.core.events import (
+from core.events import (
     AgentCalledEvent,
     AgentRespondedEvent,
     BaseEvent,

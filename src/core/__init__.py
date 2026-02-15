@@ -1,8 +1,8 @@
 """
-Core modules for agent-compare pipeline.
+Core modules for AigenFlow pipeline.
 """
 
-from .config import AgentCompareSettings, get_output_dir, get_settings
+from .config import AigenFlowSettings, get_output_dir, get_settings
 from .events import (
     AgentCalledEvent,
     AgentRespondedEvent,
@@ -19,7 +19,7 @@ from .events import (
     get_event_bus,
 )
 from .exceptions import (
-    AgentCompareException,
+    AigenFlowException,
     AgentException,
     ConfigurationException,
     ErrorCode,
@@ -42,7 +42,7 @@ from .models import (
 )
 
 __all__ = [
-    "AgentCompareSettings",
+    "AigenFlowSettings",
     "get_output_dir",
     "get_settings",
     "AgentCalledEvent",
@@ -58,7 +58,7 @@ __all__ = [
     "PipelineStartedEvent",
     "StateSavedEvent",
     "get_event_bus",
-    "AgentCompareException",
+    "AigenFlowException",
     "AgentException",
     "ConfigurationException",
     "ErrorCode",

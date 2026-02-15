@@ -1,11 +1,11 @@
 """
-Custom exceptions for agent-compare pipeline.
+Custom exceptions for AigenFlow pipeline.
 """
 
 from enum import Enum
 
 
-class AgentCompareException(Exception):
+class AigenFlowException(Exception):
     """Base exception for all agent-compare errors."""
 
     def __init__(self, message: str, details: dict | None = None) -> None:
@@ -14,27 +14,27 @@ class AgentCompareException(Exception):
         super().__init__(self.message)
 
 
-class PipelineException(AgentCompareException):
+class PipelineException(AigenFlowException):
     """Exceptions related to pipeline execution and state management."""
     pass
 
 
-class GatewayException(AgentCompareException):
+class GatewayException(AigenFlowException):
     """Exceptions related to AI gateway and provider connections."""
     pass
 
 
-class AgentException(AgentCompareException):
+class AgentException(AigenFlowException):
     """Exceptions related to AI agent interactions."""
     pass
 
 
-class TemplateException(AgentCompareException):
+class TemplateException(AigenFlowException):
     """Exceptions related to template rendering and management."""
     pass
 
 
-class ConfigurationException(AgentCompareException):
+class ConfigurationException(AigenFlowException):
     """Exceptions related to configuration and settings."""
     pass
 

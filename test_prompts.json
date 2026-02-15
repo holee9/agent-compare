@@ -1,0 +1,215 @@
+{
+  "prompts": [
+    {
+      "id": 1,
+      "domain": "business",
+      "domain_ko": "비즈니스",
+      "topic": "Startup Business Plan",
+      "topic_ko": "스타트업 비즈니스 플랜",
+      "description": "Create a comprehensive business plan for a startup",
+      "description_ko": "스타트업을 위한 포�적인 비즈니스 플랜 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Executive Summary",
+        "Market Analysis",
+        "Product/Service Description",
+        "Business Model",
+        "Marketing Strategy",
+        "Financial Projections",
+        "Team Structure",
+        "Risk Analysis"
+      ]
+    },
+    {
+      "id": 2,
+      "domain": "marketing",
+      "domain_ko": "마케팅",
+      "topic": "New Product Launch Campaign",
+      "topic_ko": "신제품 런칭 캠페인 전략",
+      "description": "Create a marketing campaign for new product launch",
+      "description_ko": "신제품 출시를 위한 마케팅 캠페인 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Target Audience Analysis",
+        "Key Messages",
+        "Channel Strategy",
+        "Content Calendar",
+        "Budget Allocation",
+        "KPIs and Metrics",
+        "Launch Timeline",
+        "Crisis Management Plan"
+      ]
+    },
+    {
+      "id": 3,
+      "domain": "research",
+      "domain_ko": "연구개발",
+      "topic": "AI Trade Technology Trend Report",
+      "topic_ko": "AI 트레이드 기술 렌포트",
+      "description": "Research and analyze AI technology trends",
+      "description_ko": "AI 기술 트랜드 분석 및 레포트 작성",
+      "template": "rd",
+      "language": "ko",
+      "requirements": [
+        "Market Overview",
+        "Key Technology Trends",
+        "Competitor Analysis",
+        "Investment Patterns",
+        "Future Predictions",
+        "Opportunity Areas",
+        "Risk Factors",
+        "Recommendations"
+      ]
+    },
+    {
+      "id": 4,
+      "domain": "education",
+      "domain_ko": "교육",
+      "topic": "Online Course Curriculum Design",
+      "topic_ko": "온라인 강의 만들기",
+      "description": "Design comprehensive online course curriculum",
+      "description_ko": "온라인 강의 커리큘럼 설계",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Course Objectives",
+        "Target Audience",
+        "Module Structure",
+        "Learning Outcomes",
+        "Assessment Methods",
+        "Resource Materials",
+        "Engagement Strategies",
+        "Certification Criteria"
+      ]
+    },
+    {
+      "id": 5,
+      "domain": "entertainment",
+      "domain_ko": "엔터테인먼트",
+      "topic": "Web Novel Content Idea",
+      "topic_ko": "글로벌 콘텐츠 아이디어",
+      "description": "Create engaging web novel content concept",
+      "description_ko": "매력적인 금로벌 소설 콘텐츠 아이디어 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Genre and Theme",
+        "Character Development",
+        "World Building",
+        "Plot Outline",
+        "Conflict Structure",
+        "Narrative Style",
+        "Episode Planning",
+        "Reader Engagement Hooks"
+      ]
+    },
+    {
+      "id": 6,
+      "domain": "banking",
+      "domain_ko": "뱅융",
+      "topic": "Service System Architecture Design",
+      "topic_ko": "서비스 시스템 기획 구조",
+      "description": "Design modern service system architecture",
+      "description_ko": "현대적인 서비스 시스템 아키텍처 설계",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "System Overview",
+        "Component Architecture",
+        "Data Flow Design",
+        "API Specifications",
+        "Scalability Strategy",
+        "Security Measures",
+        "Deployment Plan",
+        "Monitoring Strategy"
+      ]
+    },
+    {
+      "id": 7,
+      "domain": "product",
+      "domain_ko": "제품",
+      "topic": "Smartphone Feature Specification",
+      "topic_ko": "스마트폰 기능 명세서",
+      "description": "Create detailed smartphone feature specifications",
+      "description_ko": "스마트폰 기능 명세서 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Display Specifications",
+        "Camera Features",
+        "Performance Metrics",
+        "Battery and Charging",
+        "Connectivity Options",
+        "Software Features",
+        "Design Elements",
+        "Price Positioning",
+        "Competitive Advantages"
+      ]
+    },
+    {
+      "id": 8,
+      "domain": "finance",
+      "domain_ko": "금융",
+      "topic": "Fintech Investor Pitch Deck",
+      "topic_ko": "핀테크톤 아이템 투자 계획",
+      "description": "Create investor pitch for fintech startup",
+      "description_ko": "핀테크 스타트업 아이템 투자 유치 자료 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Problem Statement",
+        "Solution Overview",
+        "Market Opportunity",
+        "Business Model",
+        "Traction Metrics",
+        "Competitive Advantage",
+        "Team Background",
+        "Ask and Use of Funds"
+      ]
+    },
+    {
+      "id": 9,
+      "domain": "media",
+      "domain_ko": "미디어",
+      "topic": "YouTube Content Strategy",
+      "topic_ko": "유튜브 채널 콘텐츠 기획",
+      "description": "Create YouTube content strategy plan",
+      "description_ko": "유튜브 채널 운영을 위한 콘텐츠 기획 수립",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Channel Positioning",
+        "Content Pillars",
+        "Upload Schedule",
+        "SEO Strategy",
+        "Audience Growth Plan",
+        "Monetization Strategy",
+        "Brand Partnerships",
+        "Analytics Framework"
+      ]
+    },
+    {
+      "id": 10,
+      "domain": "communication",
+      "domain_ko": "커뮤니케이션",
+      "topic": "Social Media Crisis Response Guide",
+      "topic_ko": "소설 트랜드 가이드",
+      "description": "Create crisis management guide for social media",
+      "description_ko": "소설 미디어 리스크 관리 가이드라인 작성",
+      "template": "startup",
+      "language": "ko",
+      "requirements": [
+        "Crisis Classification",
+        "Response Protocol",
+        "Approval Workflow",
+        "Template Messages",
+        "Monitoring Systems",
+        "Team Roles",
+        "Recovery Strategy",
+        "Prevention Measures"
+      ]
+    }
+  ]
+}
