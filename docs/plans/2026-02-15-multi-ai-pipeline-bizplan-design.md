@@ -124,7 +124,7 @@ User Input (idea)
 ## 5. File Structure
 
 ```
-agent-compare/
+aigenflow/
 ├── .mcp.json                          # MCP server registration
 ├── mcp-servers/
 │   ├── mcp-openai/

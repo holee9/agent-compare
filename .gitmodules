@@ -1,3 +1,3 @@
 [submodule "proxima"]
-	path = proxima
+	path = aigenflow
 	url = https://github.com/Zen4-bit/Proxima.git

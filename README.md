@@ -1,4 +1,4 @@
-# agent-compare
+# AigenFlow
 
 > 4개의 AI 에이전트(ChatGPT, Claude, Gemini, Perplexity)를 활용한 사업계획서/R&D 제안서 자동 생성 CLI 파이프라인
 
@@ -11,7 +11,7 @@ Playwright 영구 프로필 기반으로 API 키 없이 구독형 AI 서비스�
 이 파이프라인의 출력물(사업계획서/R&D 제안서)은 이후 AI 에이전트들이 실제 프로젝트를 구현해 나가는 **입력 SPEC**으로 활용됩니다.
 
 ```
-[agent-compare 파이프라인]              [AI 에이전트 구현]
+[AigenFlow 파이프라인]              [AI 에이전트 구현]
  주제 입력 --> 5단계 AI 협업 -->  문서.md  -->  프로젝트 빌드
               (ChatGPT/Claude/           (문서를 SPEC으로 삼아
                Gemini/Perplexity)         AI가 실제 구현)
@@ -150,42 +150,42 @@ KO 입력 --+-- EN 프롬프트 --- EN 처리 (AI) ---+-- KO 출력
 
 ```bash
 # 사업계획서 생성 (기본 모드)
-agent-compare run --topic "AI SaaS 플랫폼"
+AigenFlow run --topic "AI SaaS 플랫폼"
 
 # R&D 제안서 생성
-agent-compare run --type rd --topic "양자 컴퓨팅 응용 연구"
+AigenFlow run --type rd --topic "양자 컴퓨팅 응용 연구"
 
 # 템플릿 지정 (startup / rd / strategy)
-agent-compare run --topic "친환경 물류" --template startup
+AigenFlow run --topic "친환경 물류" --template startup
 
 # 출력 언어 지정
-agent-compare run --topic "Fintech App" --lang en
+AigenFlow run --topic "Fintech App" --lang en
 
 # 특정 단계부터 재개
-agent-compare run --topic "AI SaaS" --from-phase 3
+AigenFlow run --topic "AI SaaS" --from-phase 3
 ```
 
 ### 유틸리티 명령
 
 ```bash
 # 최초 설정: 각 AI 서비스 로그인
-agent-compare setup
+AigenFlow setup
 
 # Playwright 브라우저 및 AI 세션 상태 확인
-agent-compare check
+AigenFlow check
 
 # 만료된 세션 재로그인
-agent-compare relogin [chatgpt|claude|gemini|perplexity]
+AigenFlow relogin [chatgpt|claude|gemini|perplexity]
 
 # 중단된 파이프라인 재개
-agent-compare resume <session-id>
+AigenFlow resume <session-id>
 
 # 실행 상태 조회
-agent-compare status <session-id>
+AigenFlow status <session-id>
 
 # 설정 조회/변경
-agent-compare config show
-agent-compare config set language en
+AigenFlow config show
+AigenFlow config set language en
 ```
 
 ### CLI 옵션
@@ -248,7 +248,7 @@ output/<session-id>/
 ## 프로젝트 구조
 
 ```
-agent-compare/
+AigenFlow/
 ├── src/                            # Python 코어 파이프라인
 │   ├── main.py                     # CLI 진입점 (Typer)
 │   ├── pipeline/                   # 5단계 파이프라인
@@ -290,12 +290,12 @@ agent-compare/
 
 ### 아키텍처 진화 기록
 
-**Phase 1: Proxima 기반 검증 (2026-02-15)**
-- Proxima(Electron) + 쿠키 임포트로 3-AI 영어 테스트 성공 (Perplexity 8.9s, ChatGPT 4.7s, Gemini 5.4s)
+**Phase 1: AigenFlow 기반 검증 (2026-02-15)**
+- AigenFlow(Electron) + 쿠키 임포트로 3-AI 영어 테스트 성공 (Perplexity 8.9s, ChatGPT 4.7s, Gemini 5.4s)
 - 문제 발견: 쿠키 만료 시 수동 갱신 필요 → 자동화 파이프라인과 모순
 
 **Phase 2: Playwright 전환 결정 (2026-02-15)**
-- Proxima 제거, Playwright 영구 프로필 기반으로 전환
+- AigenFlow 제거, Playwright 영구 프로필 기반으로 전환
 - 4단계 세션 자동 복구 체인 설계 (리프레시 → 재로그인 → 폴백 → Claude 안전망)
 - 상세 설계: `docs/plans/2026-02-15-playwright-gateway-design.md`
 
@@ -326,7 +326,7 @@ agent-compare/
 ## 프로젝트 상태
 
 - [x] 4개 AI 교차검증 완료 (final-summary.md)
-- [x] Proxima 연동 검증 → 쿠키 만료 문제 확인 → Playwright 전환 결정
+- [x] AigenFlow 연동 검증 → 쿠키 만료 문제 확인 → Playwright 전환 결정
 - [x] SPEC 문서 작성 완료 (SPEC-PIPELINE-001, Playwright 기반으로 업데이트)
 - [x] Playwright Gateway 설계 문서 완료
 - [x] Playwright PoC 검증 완료 (4개 AI 프로필/세션/전송/응답 전과정 성공)
