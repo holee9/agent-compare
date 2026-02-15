@@ -198,14 +198,13 @@ python -m src.main setup
 
 ### 실행 방법
 
-**현재는 clone된 폴더에서 직접 실행**해야 합니다:
-
 ```bash
-# clone된 폴더 내에서 실행
+# 파이프라인 실행 (현재 디렉토리에서)
 python -m src.main run --topic "AI SaaS 플랫폼"
-```
 
-> **참고**: 향후 `pip install aigenflow`로 전역 설치 후 어디서든 `AigenFlow` 명령으로 사용 가능하도록 개선 예정입니다.
+# 또는 (setup 후)
+aigenflow run --topic "AI SaaS 플랫폼"
+```
 
 ---
 
@@ -215,43 +214,60 @@ python -m src.main run --topic "AI SaaS 플랫폼"
 
 ```bash
 # 사업계획서 생성 (기본 모드)
-AigenFlow run --topic "AI SaaS 플랫폼"
+aigenflow run --topic "AI SaaS 플랫폼"
 
 # R&D 제안서 생성
-AigenFlow run --type rd --topic "양자 컴퓨팅 응용 연구"
+aigenflow run --type rd --topic "양자 컴퓨팅 응용 연구"
 
 # 템플릿 지정 (startup / rd / strategy)
-AigenFlow run --topic "친환경 물류" --template startup
+aigenflow run --topic "친환경 물류" --template startup
 
 # 출력 언어 지정
-AigenFlow run --topic "Fintech App" --lang en
+aigenflow run --topic "Fintech App" --lang en
 
 # 특정 단계부터 재개
-AigenFlow run --topic "AI SaaS" --from-phase 3
+aigenflow run --topic "AI SaaS" --from-phase 3
 ```
 
 ### 유틸리티 명령
 
 ```bash
-# 최초 설정: 각 AI 서비스 로그인
-AigenFlow setup
+# 최초 설정: 대화형 설정 마법사
+aigenflow setup
 
 # Playwright 브라우저 및 AI 세션 상태 확인
-AigenFlow check
+aigenflow check
 
-# 만료된 세션 재로그인
-AigenFlow relogin [chatgpt|claude|gemini|perplexity]
-
-# 중단된 파이프라인 재개
-AigenFlow resume <session-id>
+# 특정 프로바이더 재로그인
+aigenflow relogin claude
+aigenflow relogin chatgpt
+aigenflow relogin gemini
+aigenflow relogin perplexity
 
 # 실행 상태 조회
-AigenFlow status <session-id>
+aigenflow status              # 최근 세션 목록
+aigenflow status <session-id>   # 특정 세션 상세
 
-# 설정 조회/변경
-AigenFlow config show
-AigenFlow config set language en
+# 중단된 파이프라인 재개
+aigenflow resume <session-id>
+
+# 설정 관리
+aigenflow config show           # 설정 조회
+aigenflow config list           # 설정 키 목록
+aigenflow config set <key> <value>  # 설정 변경
 ```
+
+### CLI 명령 설명
+
+| 명령 | 설명 |
+|------|------|
+| `run` | 파이프라인 실행 (기본 명령) |
+| `setup` | 최초 설정 마법사 (헤드드 모드 브라우저 실행) |
+| `check` | Playwright 브라우저 및 AI 세션 상태 확인 |
+| `relogin [PROVIDER]` | 만료된 세션 재로그인 |
+| `status [SESSION_ID]` | 파이프라인 실행 상태 조회 |
+| `resume SESSION_ID` | 중단된 파이프라인 재개 |
+| `config show/list/set` | 설정 관리 |
 
 ### CLI 옵션
 
@@ -316,10 +332,22 @@ output/<session-id>/
 AigenFlow/
 ├── src/                            # Python 코어 파이프라인
 │   ├── main.py                     # CLI 진입점 (Typer)
+│   ├── cli/                        # CLI 유틸리티 명령
+│   │   ├── check.py               # check 명령
+│   │   ├── setup.py               # setup 명령
+│   │   ├── relogin.py             # relogin 명령
+│   │   ├── status.py              # status 명령
+│   │   ├── resume.py              # resume 명령
+│   │   └── config.py              # config 명령
 │   ├── pipeline/                   # 5단계 파이프라인
 │   │   ├── orchestrator.py         # 상태 머신 + 이벤트
 │   │   ├── state.py                # PipelineState, PhaseResult
-│   │   └── phase1~5_*.py           # 각 단계 모듈
+│   │   ├── base.py                # BasePhase 추상 클래스
+│   │   ├── phase1_framing.py      # Phase 1: 개념 프레이밍
+│   │   ├── phase2_research.py     # Phase 2: 심층 리서치
+│   │   ├── phase3_strategy.py     # Phase 3: 전략/로드맵
+│   │   ├── phase4_writing.py      # Phase 4: 초안 작성
+│   │   └── phase5_review.py       # Phase 5: 최종 검증
 │   ├── agents/                     # AI 에이전트 라우팅
 │   │   ├── base.py                 # AsyncAgent Protocol
 │   │   └── router.py              # (단계, 작업) -> AI 매핑
@@ -328,15 +356,34 @@ AigenFlow/
 │   │   ├── session.py             # SessionManager (4단계 복구 체인)
 │   │   └── {provider}.py          # 서비스별 Provider 어댑터
 │   ├── core/                       # 설정, 이벤트, 예외, 로깅
+│   ├── ui/                         # Rich UI 컴포넌트
+│   │   ├── progress.py            # PipelineProgress (진행률 표시)
+│   │   ├── logger.py              # LogStream (실시간 로그)
+│   │   └── summary.py             # PhaseSummary (Phase 요약)
 │   ├── templates/                  # Jinja2 프롬프트 + 출력 템플릿
 │   └── output/                     # 포매팅 + 파일 내보내기
 ├── tests/                          # 테스트 스위트
+│   ├── cli/                        # CLI 명령 테스트
+│   ├── pipeline/                   # Phase 모듈 테스트
+│   └── ui/                         # UI 컴포넌트 테스트
 ├── docs/plans/                     # 설계 문서
 ├── .moai/
-│   ├── specs/SPEC-PIPELINE-001/    # SPEC 문서
+│   ├── specs/                      # SPEC 문서
+│   │   ├── SPEC-PIPELINE-001/    # 파이프라인 SPEC
+│   │   ├── SPEC-PACKAGING-001/   # 패키징 SPEC
+│   │   └── SPEC-STATUS-002/      # 프로젝트 현황 분석 및 계획 보완
 │   └── project/                    # 프로젝트 설계 문서
 └── final-summary.md                # 4개 AI 교차검증 최종안
 ```
+
+### 아키텍처 개선사항 (v2.0)
+
+**v2.0에서 추가된 모듈**:
+- **CLI 모듈** (`src/cli/`): 6개 유틸리티 명령 분리 구현
+- **Phase 모듈** (`src/pipeline/phase*.py`): 각 파이프라인 단계를 독립적인 클래스로 분리
+- **UI 모듈** (`src/ui/`): Rich 라이브러리 기반 진행 상황 시각화
+
+**테스트 커버리지**: 135개 테스트, 85%+ 커버리지 달성
 
 ---
 
