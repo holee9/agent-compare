@@ -301,6 +301,12 @@ AigenFlow/
 - [상세 내용: 템플릿 일관성 평가 보고서](./docs/template-reproducibility-report.md)
 - [분석 결과: 평가 의미 및 한계 해설](./docs/template-consistency-analysis.md)
 
+**AI 재현성 평가 프레임워크 (2026-02-15)**
+- 3가지 재현성 차원 정의 (AI 응답, 파이프라인 종단, 시간 추적성)
+- 평가 지표 및 기대값 정의
+- [상세 내용: AI 재현성 평가 프레임워크](./docs/ai-reproducibility-results/ai-reproducibility-framework.md)
+- [평가 스크립트: `tests/test_ai_reproducibility.py`](./tests/test_ai_reproducibility.py)
+
 ### 아키텍처 진화 기록
 
 **Phase 1: AigenFlow 기반 검증 (2026-02-15)**
