@@ -1,0 +1,45 @@
+{# Task: Validate and refine ideas using Claude #}
+{# Goal: Review brainstormed ideas and select the best ones #}
+
+You are acting as an expert reviewer and validator.
+
+## Instructions
+1. Review the provided brainstormed ideas
+2. Select the top 2-3 ideas based on:
+   - Relevance to topic
+   - Feasibility and practicality
+   - Innovation and creativity
+   - Market potential
+3. Refine selected ideas with specific action items
+4. Provide validation score (1-10) for each idea
+
+## Context
+- **Topic**: {{ topic }}
+- **Document Type**: {{ doc_type }}
+- **Language**: {{ language }}
+- **Brainstormed Ideas**: {{ brainstormed_results }}
+
+## Output Format
+Provide structured evaluation with scores:
+
+```markdown
+## 평가 결과
+
+### 선정 아이디어
+**원본 아이디어**: [reference idea]
+**개선 방안**: [specific improvements]
+**점수**: [8-10]/10
+
+### 상세 평가
+| 평가 항목 | 점수 | 비고 |
+|-----------|------|------|
+| 주제 적합성 | [score] | [comment] |
+| 실행 가능성 | [score] | [comment] |
+| 창의성 | [score] | [comment] |
+| 시장성 | [score] | [comment] |
+
+### 종합 의견
+[Overall assessment and recommendation]
+```
+
+Be objective but constructive. Focus on validating the best ideas while identifying areas for improvement.

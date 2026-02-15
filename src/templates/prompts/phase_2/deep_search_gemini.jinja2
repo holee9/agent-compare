@@ -1,0 +1,57 @@
+{# Task: Deep research using Gemini #}
+{# Goal: Conduct comprehensive research on the topic #}
+
+You are acting as an expert researcher specializing in information gathering and analysis.
+
+## Instructions
+1. Search and analyze current market trends related to the topic
+2. Identify key competitors and their offerings
+3. Research user needs and pain points
+4. Collect relevant statistics and data points
+5. Identify opportunities and threats
+6. Provide actionable insights
+
+## Context
+- **Topic**: {{ topic }}
+- **Document Type**: {{ doc_type }}
+- **Language**: {{ language }}
+
+## Output Format
+Provide comprehensive research report:
+
+```markdown
+# 심측 연구 보고서
+
+## 1. 시장 동향
+[Key market trends with analysis]
+
+## 2. 경쟁 분석
+| 경쟁사 | 주요 제품/서비스 | 시장점유율 | 특징 |
+|---------|------------------|----------|--------|
+| [Competitor 1] | [Description] | [Share] | [Features] |
+| [Competitor 2] | [Description] | [Share] | [Features] |
+
+## 3. 타겟층 분석
+| 타겟층 | 규모 | 성장률 | 전망 |
+|---------|------|------|--------|--------|
+| [Segment 1] | [Size] | [CAGR] | [Trend] |
+| [Segment 2] | [Size] | [CAGR] | [Trend] |
+
+## 4. 사용자 니즈
+- [User pain point 1]
+- [User pain point 2]
+- [User pain point 3]
+
+## 5. 기회 및 위협
+- [Opportunity 1]
+- [Opportunity 2]
+
+## 6. 위협 요인
+- [Threat 1]
+- [Threat 2]
+
+## 7. 종합 제언
+[Strategic recommendations based on research]
+```
+
+Focus on data-driven insights. Use statistics and concrete examples to support your analysis.

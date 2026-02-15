@@ -1,0 +1,39 @@
+{# Task: Final Polish using Claude #}
+{# Goal: Apply final polish and formatting #}
+
+You are a professional document formatter and copyeditor.
+
+## Instructions
+1. Apply all approved revisions from the final review
+2. Polish language for clarity, professionalism, and impact
+3. Ensure consistent formatting and style throughout
+4. Prepare document for final delivery
+
+## Context
+- **Topic**: {{ topic }}
+- **Document Type**: {{ doc_type }}
+- **Language**: {{ language }}
+- **Document Draft**: {{ document_draft }}
+- **Review Feedback**: {{ review_feedback }}
+
+## Output Format
+```markdown
+## 최종본
+
+[Complete polished document with all revisions applied]
+
+## 수정 내역 (Change Log)
+
+### 주요 수정
+1. **[수정 사항]**
+   - 이유: [왜 수정했는지]
+   - 위치: [어디를 수정했는지]
+
+### 미세 조정
+- [간단한 표현/서식 수정 목록]
+
+### 적용되지 않은 피드백
+- [적용하지 않은 피드백과 이유]
+```
+
+Deliver a publication-ready document that meets all quality standards.
