@@ -16,6 +16,12 @@ from src.core.models import (
 )
 from src.gateway.session import SessionManager
 from src.output.formatter import FileExporter
+from src.pipeline.base import BasePhase
+from src.pipeline.phase1_framing import Phase1Framing
+from src.pipeline.phase2_research import Phase2Research
+from src.pipeline.phase3_strategy import Phase3Strategy
+from src.pipeline.phase4_writing import Phase4Writing
+from src.pipeline.phase5_review import Phase5Review
 from src.templates.manager import TemplateManager
 
 TOTAL_PHASES = 5
@@ -33,29 +39,75 @@ class PipelineOrchestrator:
         settings: Any = None,
         template_manager: TemplateManager | None = None,
         session_manager: SessionManager | None = None,
+        enable_ui: bool = False,
     ) -> None:
-        """Initialize orchestrator with dependencies."""
+        """
+        Initialize orchestrator with dependencies.
+
+        Args:
+            settings: Configuration settings
+            template_manager: Template manager for prompt rendering
+            session_manager: Session manager for browser sessions
+            enable_ui: Enable Rich UI components (progress, logging, summary)
+        """
         self.settings = settings
         self.template_manager = template_manager or TemplateManager()
         self.session_manager = session_manager or SessionManager()
         self.agent_router = AgentRouter(settings)
         self.current_session: PipelineSession | None = None
+        self.enable_ui = enable_ui
+
+        # Initialize phase classes
+        self._phases: dict[int, BasePhase] = {
+            1: Phase1Framing(self.template_manager, self.agent_router),
+            2: Phase2Research(self.template_manager, self.agent_router),
+            3: Phase3Strategy(self.template_manager, self.agent_router),
+            4: Phase4Writing(self.template_manager, self.agent_router),
+            5: Phase5Review(self.template_manager, self.agent_router),
+        }
+
+        # Initialize UI components if enabled
+        if self.enable_ui:
+            from rich.console import Console
+
+            from src.ui.logger import LogStream
+            from src.ui.progress import PipelineProgress
+            from src.ui.summary import PhaseSummary
+
+            console = Console()
+            self.ui_progress = PipelineProgress(console)
+            self.ui_logger = LogStream(console)
+            self.ui_summary = PhaseSummary(console)
+        else:
+            self.ui_progress = None
+            self.ui_logger = None
+            self.ui_summary = None
 
     def create_session(self, config: PipelineConfig) -> PipelineSession:
         """Create a new pipeline session."""
         return PipelineSession(config=config)
 
-    @staticmethod
-    def get_phase_tasks(phase_number: int) -> list[PhaseTask]:
-        """Return configured tasks for each phase."""
-        phase_tasks: dict[int, list[PhaseTask]] = {
-            1: [PhaseTask.BRAINSTORM_CHATGPT, PhaseTask.VALIDATE_CLAUDE],
-            2: [PhaseTask.DEEP_SEARCH_GEMINI, PhaseTask.FACT_CHECK_PERPLEXITY],
-            3: [PhaseTask.SWOT_CHATGPT, PhaseTask.NARRATIVE_CLAUDE],
-            4: [PhaseTask.BUSINESS_PLAN_CLAUDE, PhaseTask.OUTLINE_CHATGPT, PhaseTask.CHARTS_GEMINI],
-            5: [PhaseTask.VERIFY_PERPLEXITY, PhaseTask.FINAL_REVIEW_CLAUDE, PhaseTask.POLISH_CLAUDE],
-        }
-        return phase_tasks.get(phase_number, [])
+    def get_phase_tasks(self, phase_number: int) -> list[PhaseTask]:
+        """
+        Return configured tasks for each phase.
+
+        This method is kept for backward compatibility.
+        It delegates to the phase classes.
+
+        Args:
+            phase_number: Phase number (1-5)
+
+        Returns:
+            List of PhaseTask enum values
+        """
+        phase = self._phases.get(phase_number)
+        if phase is None:
+            return []
+
+        # Create a dummy session to call get_tasks
+        config = PipelineConfig(topic="Dummy topic for getting phase tasks")
+        session = PipelineSession(config=config)
+        return phase.get_tasks(session)
 
     def _save_phase_result(self, exporter: FileExporter | None, result: PhaseResult) -> None:
         if exporter is None:
@@ -66,10 +118,6 @@ class PipelineOrchestrator:
         if exporter is None:
             return
         exporter.save_json("pipeline_state", session.model_dump(mode="json"))
-
-    @staticmethod
-    def _build_template_name(phase_number: int, task: PhaseTask) -> str:
-        return f"phase_{phase_number}/{task.value}"
 
     @staticmethod
     def _finalize_session_state(session: PipelineSession) -> None:
@@ -91,62 +139,52 @@ class PipelineOrchestrator:
         Returns:
             PhaseResult with execution results
         """
-        tasks = self.get_phase_tasks(phase_number)
-        phase_name = f"Phase {phase_number}"
-        result = create_phase_result(phase_number, phase_name)
+        # Get the appropriate phase class
+        phase = self._phases.get(phase_number)
 
-        if not tasks:
+        if phase is None:
+            # Phase not configured, return skipped result
+            result = create_phase_result(phase_number, f"Phase {phase_number}")
             result.status = PhaseStatus.SKIPPED
             result.completed_at = datetime.now()
             return result
 
-        responses: list[AgentResponse] = []
-        failed = False
+        # Log phase start if UI enabled
+        if self.ui_logger:
+            self.ui_logger.info(f"Starting Phase {phase_number}: {phase.get_phase_number()}")
 
-        for task in tasks:
-            prompt = self.template_manager.render_prompt(
-                template_name=self._build_template_name(phase_number, task),
-                context={
-                    "topic": session.config.topic,
-                    "doc_type": session.config.doc_type.value,
-                    "language": session.config.language,
-                },
+        # Execute the phase
+        result = await phase.execute(session, session.config)
+
+        # Update UI progress if enabled
+        if self.ui_progress and phase_number <= 5:
+            phase_names = {
+                1: "Framing",
+                2: "Research",
+                3: "Strategy",
+                4: "Writing",
+                5: "Review",
+            }
+            # Get first agent from responses for display
+            agent_name = "Unknown"
+            if result.ai_responses:
+                agent_name = result.ai_responses[0].agent_name.value
+
+            self.ui_progress.update_phase(
+                phase_number=phase_number,
+                phase_name=phase_names.get(phase_number, f"Phase {phase_number}"),
+                agent_name=agent_name,
             )
 
-            try:
-                response = await self.agent_router.execute(
-                    phase=phase_number,
-                    task=task,
-                    prompt=prompt,
-                    doc_type=session.config.doc_type,
-                )
-                normalized_response = AgentResponse(
-                    agent_name=AgentType(response.agent_name),
-                    task_name=response.task_name,
-                    content=response.content,
-                    tokens_used=response.tokens_used,
-                    response_time=response.response_time,
-                    success=response.success,
-                    error=response.error,
-                )
-                responses.append(normalized_response)
-                if not normalized_response.success:
-                    failed = True
-            except Exception as exc:  # pragma: no cover - covered through error path assertions
-                failed = True
-                responses.append(
-                    AgentResponse(
-                        agent_name=AgentType.CHATGPT,
-                        task_name=task.value,
-                        content="",
-                        success=False,
-                        error=str(exc),
-                    )
-                )
+        # Log phase completion if UI enabled
+        if self.ui_logger:
+            if result.status == PhaseStatus.COMPLETED:
+                self.ui_logger.info(f"Phase {phase_number} completed successfully")
+            elif result.status == PhaseStatus.FAILED:
+                self.ui_logger.error(f"Phase {phase_number} failed")
+            else:
+                self.ui_logger.warning(f"Phase {phase_number} skipped")
 
-        result.ai_responses = responses
-        result.status = PhaseStatus.FAILED if failed else PhaseStatus.COMPLETED
-        result.completed_at = datetime.now()
         return result
 
     async def run_pipeline(self, config: PipelineConfig) -> PipelineSession:
@@ -165,6 +203,14 @@ class PipelineOrchestrator:
         output_dir.mkdir(parents=True, exist_ok=True)
         exporter = FileExporter(output_dir)
 
+        # Start UI progress if enabled
+        if self.ui_progress:
+            self.ui_progress.start(total_phases=TOTAL_PHASES)
+
+        # Log pipeline start if UI enabled
+        if self.ui_logger:
+            self.ui_logger.info(f"Starting pipeline for topic: {config.topic}")
+
         try:
             for phase_num in range(1, TOTAL_PHASES + 1):
                 result = await self.execute_phase(session, phase_num)
@@ -175,9 +221,27 @@ class PipelineOrchestrator:
                     session.state = PipelineState(f"phase_{phase_num}")
                 elif result.status == PhaseStatus.FAILED:
                     session.state = PipelineState.FAILED
+                    if self.ui_logger:
+                        self.ui_logger.error("Pipeline failed, stopping execution")
                     break
 
             self._finalize_session_state(session)
+
+            # Stop UI progress and show summary if enabled
+            if self.ui_progress:
+                self.ui_progress.stop()
+                self.ui_progress.show_session_summary(session)
+
+            if self.ui_summary:
+                self.ui_summary.show_session_phases(session)
+
+            # Log pipeline completion if UI enabled
+            if self.ui_logger:
+                if session.state == PipelineState.COMPLETED:
+                    self.ui_logger.info("Pipeline completed successfully!")
+                else:
+                    self.ui_logger.warning(f"Pipeline ended with state: {session.state.value}")
+
         finally:
             self._save_pipeline_state(exporter, session)
 

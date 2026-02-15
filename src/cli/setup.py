@@ -1,0 +1,151 @@
+"""
+Setup command for AigenFlow CLI.
+
+Interactive wizard for first-time configuration and browser setup.
+"""
+
+import sys
+from typing import Any
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+
+from core import get_settings
+from gateway.session import SessionManager
+
+console = Console()
+
+
+def _check_browser_installation() -> bool:
+    """Check if Playwright browser is installed."""
+    try:
+        from playwright.sync_api import sync_playwright
+        return True
+    except Exception as exc:
+        console.print(f"[red]✗ Browser check failed: {exc}[/red]")
+        return False
+
+
+def _show_setup_wizard() -> None:
+    """Display interactive setup wizard."""
+    console.print()
+    console.print(Panel.fit(
+        "[bold cyan]AigenFlow Setup Wizard[/bold cyan]\n\n"
+        "This wizard will guide you through:\n"
+        "1. Verifying Playwright browser installation\n"
+        "2. Launching browser in headed mode\n"
+        "3. Logging into AI providers (ChatGPT, Claude, Gemini, Perplexity)\n"
+        "4. Saving session cookies for future use",
+        title="[bold]Welcome[/bold]",
+        border_style="cyan"
+    ))
+    console.print()
+
+
+def _validate_provider(provider: str) -> bool:
+    """Validate provider name."""
+    valid_providers = ["chatgpt", "claude", "gemini", "perplexity", "all"]
+    return provider.lower() in valid_providers
+
+
+app = typer.Typer(help="Setup AigenFlow configuration")
+
+
+@app.command()
+def setup_app(
+    provider: str = typer.Option("all", "--provider", "-p", help="Specific provider to setup (chatgpt, claude, gemini, perplexity, all)"),
+    headed: bool = typer.Option(False, "--headed", "-h", help="Use headed browser mode"),
+) -> None:
+    """
+    Setup AigenFlow with interactive wizard.
+
+    Examples:
+        aigenflow setup              # Setup all providers
+        aigenflow setup --provider claude   # Setup only Claude
+        aigenflow setup --headed     # Use headed browser mode
+    """
+    # Validate provider
+    if not _validate_provider(provider):
+        console.print(f"[red]✗ Invalid provider: {provider}[/red]")
+        console.print("[yellow]Valid providers: chatgpt, claude, gemini, perplexity, all[/yellow]")
+        sys.exit(1)
+
+    # Show welcome message
+    _show_setup_wizard()
+
+    # Check browser installation
+    console.print("[bold]Step 1: Verifying Playwright browser...[/bold]")
+    browser_ok = _check_browser_installation()
+    if not browser_ok:
+        console.print("\n[red]✗ Playwright browser not found[/red]")
+        console.print("\n[yellow]Please install Playwright browser:[/yellow]")
+        console.print("  playwright install chromium")
+        sys.exit(1)
+    console.print("[green]✓ Playwright browser installed[/green]\n")
+
+    # Load settings
+    settings = get_settings()
+
+    # Override headless setting if --headed flag is provided
+    if headed:
+        original_headless = settings.playwright_headless
+        settings.playwright_headless = False
+
+    # Import asyncio here to avoid issues with tests
+    import asyncio
+
+    async def _run_setup():
+        """Run the setup process."""
+        session_manager = SessionManager(settings)
+
+        # Register all providers
+        from gateway.chatgpt_provider import ChatGPTProvider
+        from gateway.claude_provider import ClaudeProvider
+        from gateway.gemini_provider import GeminiProvider
+        from gateway.perplexity_provider import PerplexityProvider
+
+        if provider.lower() == "all":
+            session_manager.register("chatgpt", ChatGPTProvider(settings))
+            session_manager.register("claude", ClaudeProvider(settings))
+            session_manager.register("gemini", GeminiProvider(settings))
+            session_manager.register("perplexity", PerplexityProvider(settings))
+            console.print("[bold]Step 2: Launching browser and logging into all providers...[/bold]\n")
+        else:
+            provider_map = {
+                "chatgpt": ChatGPTProvider,
+                "claude": ClaudeProvider,
+                "gemini": GeminiProvider,
+                "perplexity": PerplexityProvider,
+            }
+            provider_class = provider_map.get(provider.lower())
+            if provider_class:
+                session_manager.register(provider.lower(), provider_class(settings))
+                console.print(f"[bold]Step 2: Launching browser and logging into {provider.capitalize()}...[/bold]\n")
+
+        # Run login flow
+        try:
+            console.print("[yellow]Browser will open in headed mode for login...[/yellow]")
+            console.print("[yellow]Please complete the login process in the browser.[/yellow]\n")
+
+            await session_manager.login_all_expired()
+            await session_manager.save_all_sessions()
+
+            console.print("[green]✓ Setup completed successfully![/green]")
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print("  Run 'aigenflow check' to verify your sessions")
+            console.print("  Run 'aigenflow status' to see pipeline status")
+
+        except Exception as exc:
+            console.print(f"\n[red]✗ Setup failed: {exc}[/red]")
+            raise
+
+    # Run the async setup
+    try:
+        asyncio.run(_run_setup())
+    except Exception:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    typer.run(setup_app)

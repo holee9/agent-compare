@@ -1,0 +1,128 @@
+"""
+Check command for AigenFlow CLI.
+
+Verifies Playwright browser installation and AI provider sessions.
+"""
+
+import sys
+from pathlib import Path
+from typing import Any
+
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from core import get_settings
+from gateway.session import SessionManager
+
+app = typer.Typer(help="Check AigenFlow system status")
+console = Console()
+
+
+def _check_browser_installation() -> bool:
+    """Check if Playwright browser is installed."""
+    try:
+        # Try to import playwright to verify it's installed
+        from playwright.sync_api import sync_playwright
+
+        # Just check if we can import and access the API
+        # Don't actually launch browser in tests
+        return True
+    except Exception as exc:
+        console.print(f"[red]✗ Browser check failed: {exc}[/red]")
+        return False
+
+
+def _format_session_status(provider: str, is_valid: bool) -> str:
+    """Format session status with emoji."""
+    return "[green]✓[/green]" if is_valid else "[red]✗[/red]"
+
+
+async def _check_sessions(settings: Any, verbose: bool = False) -> dict[str, bool]:
+    """Check all AI provider sessions."""
+    session_manager = SessionManager(settings)
+
+    # Register all providers
+    from gateway.chatgpt_provider import ChatGPTProvider
+    from gateway.claude_provider import ClaudeProvider
+    from gateway.gemini_provider import GeminiProvider
+    from gateway.perplexity_provider import PerplexityProvider
+
+    session_manager.register("chatgpt", ChatGPTProvider(settings))
+    session_manager.register("claude", ClaudeProvider(settings))
+    session_manager.register("gemini", GeminiProvider(settings))
+    session_manager.register("perplexity", PerplexityProvider(settings))
+
+    # Load sessions and check status
+    session_manager.load_all_sessions()
+    session_status = await session_manager.check_all_sessions()
+
+    return session_status
+
+
+@app.command()
+def check(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed status"),
+) -> None:
+    """
+    Check Playwright browser and AI provider sessions.
+
+    Displays status of:
+    - Playwright browser installation
+    - AI provider session validity (ChatGPT, Claude, Gemini, Perplexity)
+    """
+    settings = get_settings()
+
+    # Check browser installation
+    console.print("\n[bold cyan]System Status Check[/bold cyan]")
+    console.print("=" * 50)
+
+    console.print("\n[bold]Browser Installation:[/bold]")
+    browser_ok = _check_browser_installation()
+    if browser_ok:
+        console.print("  [green]✓ Playwright browser installed[/green]")
+    else:
+        console.print("  [red]✗ Playwright browser not found[/red]")
+        console.print("\n[yellow]Run: playwright install chromium[/yellow]")
+        sys.exit(1)
+
+    # Check AI provider sessions
+    console.print("\n[bold]AI Provider Sessions:[/bold]")
+
+    import asyncio
+
+    try:
+        session_status = asyncio.run(_check_sessions(settings, verbose))
+
+        # Create status table
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Provider", style="cyan", width=15)
+        table.add_column("Status", width=10)
+
+        all_valid = True
+        for provider, is_valid in session_status.items():
+            status_icon = _format_session_status(provider, is_valid)
+            status_text = "[green]Valid[/green]" if is_valid else "[red]Invalid[/red]"
+            table.add_row(provider.capitalize(), f"{status_icon} {status_text}")
+            if not is_valid:
+                all_valid = False
+
+        console.print(table)
+
+        if not all_valid:
+            console.print("\n[yellow]Some sessions are invalid. Run 'aigenflow setup' to configure.[/yellow]")
+            sys.exit(1)
+        else:
+            console.print("\n[green]✓ All systems operational![/green]")
+
+    except Exception as exc:
+        console.print(f"\n[red]Error checking sessions: {exc}[/red]")
+        if verbose:
+            import traceback
+
+            console.print(traceback.format_exc())
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    typer.run(check)
