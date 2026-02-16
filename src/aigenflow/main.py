@@ -104,7 +104,7 @@ def main(
 
 # Register all CLI commands as subcommands
 app.add_typer(cache_app, name="cache", help="Manage AI response cache")
-app.command()(check_cmd)  # Register check directly
+app.command(name="check")(check_cmd)  # Register with explicit name
 app.command()(setup_command)  # Register setup directly
 app.command()(relogin_command)  # Register relogin directly
 app.command()(run_command)  # Register run directly
