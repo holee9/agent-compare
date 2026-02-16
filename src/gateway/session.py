@@ -79,12 +79,14 @@ class SessionManager:
     async def login_all_expired(self) -> None:
         """
         Run login flow for all expired sessions.
+
+        Note: Does not call check_session() beforehand to avoid unnecessary
+        browser open/close cycles. Each provider's login_flow() handles
+        session validation internally.
         """
         for name, provider in self.providers.items():
             try:
-                is_valid = await provider.check_session()
-                if not is_valid:
-                    await provider.login_flow()
+                await provider.login_flow()
             except Exception as exc:
                 self._log_provider_error("login_flow", name, exc)
 

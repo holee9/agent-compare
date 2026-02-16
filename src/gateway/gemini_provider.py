@@ -104,15 +104,20 @@ class GeminiProvider(BaseProvider):
         Execute Gemini login flow.
 
         Process:
-        1. Check if session exists and is valid
+        1. Check if session file exists (quick check without browser)
         2. If not, launch browser in headed mode
         3. Wait for user to complete login
         4. Detect successful login via DOM element
         5. Extract and save cookies
         """
-        # First check if existing session is valid
-        if await self.check_session():
+        # Quick check: if no session file exists, skip to login
+        if not self._storage.session_exists():
+            # No session file, proceed directly to login
+            pass
+        elif await self.check_session():
+            # Session exists and is valid
             return
+        # Session exists but is invalid, proceed to login
 
         # Get browser manager
         browser_manager = await self.get_browser_manager()
