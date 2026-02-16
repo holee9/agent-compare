@@ -35,6 +35,25 @@ cd aigenflow
 pip install -e .
 ```
 
+### 제거 (Uninstallation)
+
+```bash
+# 1. 패키지 제거
+pip uninstall aigenflow
+
+# 2. 생성된 문서 출력물 제거 (선택)
+rm -rf output/
+
+# 3. Playwright 브라우저 프로필 제거 (선택)
+# Windows: %USERPROFILE%\.aigenflow\profiles\
+# macOS/Linux: ~/.aigenflow/profiles/
+
+# 4. 설정 파일 제거 (선택)
+# Windows: %APPDATA%\aigenflow\
+# macOS: ~/Library/Application Support/aigenflow/
+# Linux: ~/.config/aigenflow/
+```
+
 ### 사용법 (Usage)
 
 ```bash
