@@ -1,0 +1,88 @@
+# DOM Selectors for AI Provider Web Interfaces
+#
+# This file defines CSS selectors for interacting with various AI provider web interfaces.
+# When a provider's DOM structure changes, update this file without modifying code.
+#
+# Selector Structure:
+#   providers.{provider_name}.{selector_key}: CSS selector string
+#
+# Provider Keys: claude, gemini, chatgpt, perplexity
+# Selector Categories:
+#   - login_button: Button to initiate login flow
+#   - chat_input: Input field for user messages
+#   - send_button: Button to send message
+#   - response_container: Container where AI responses appear
+#   - logout_button: Button to logout (optional)
+#   - new_chat_button: Button to start new chat (optional)
+
+providers:
+  claude:
+    # Claude.ai selectors
+    base_url: "https://claude.ai"
+    login_button: "button[data-testid='login-button'], a[href*='login']"
+    chat_input: "[contenteditable='true'], div[contenteditable='true'], textarea"
+    send_button: "button[data-testid='send-button'], button[aria-label='Send']"
+    response_container: "[data-testid='conversation-turn'], div[class*='conversation']"
+    logout_button: "button[aria-label*='logout'], button[aria-label*='Log out']"
+    new_chat_button: "button[aria-label='New chat'], a[href*='/new']"
+    username_indicator: "div[data-testid='username'], span[class*='username']"
+
+  gemini:
+    # Gemini (gemini.google.com) selectors
+    base_url: "https://gemini.google.com"
+    login_button: "button[action*='login'], .login-button"
+    chat_input: ".ql-editor, .rich-textarea, div[contenteditable='true'], textarea"
+    send_button: "button[aria-label='Send'], button[aria-label='send']"
+    response_container: ".model-response, .response-container, .conversation-turn"
+    logout_button: "button[aria-label*='Sign out'], .logout-button"
+    new_chat_button: "button[aria-label='New chat'], .new-chat-button"
+    username_indicator: ".user-email, .username-display"
+
+  chatgpt:
+    # ChatGPT (chatgpt.com) selectors
+    base_url: "https://chatgpt.com"
+    login_button: "button[data-testid='login-button'], a[href*='auth/login']"
+    chat_input: "#prompt-textarea, [contenteditable='true'], textarea"
+    send_button: "button[data-testid='send-button'], button[aria-label='Send']"
+    response_container: "[data-message-author-role='assistant'], .markdown-prose"
+    logout_button: "button[aria-label*='Log out'], .logout-button"
+    new_chat_button: "button[aria-label='New chat'], a[href*='/c/new']"
+    username_indicator: ".user-email, [data-testid='profile-button']"
+
+  perplexity:
+    # Perplexity.ai selectors
+    base_url: "https://www.perplexity.ai"
+    login_button: "button[class*='login'], a[href*='login']"
+    chat_input: "[role='textbox'], textarea, div[contenteditable='true']"
+    send_button: "button[class*='submit'], button[aria-label='Ask']"
+    response_container: "[class*='answer'], .answer-container, .thread-result"
+    logout_button: "button[aria-label*='logout'], .sign-out-button"
+    new_chat_button: "button[aria-label='New thread'], a[href*='/new']"
+    username_indicator: ".user-menu, .profile-indicator"
+
+# Validation rules for selector configuration
+#
+# These rules ensure selector integrity and provide helpful error messages.
+validation:
+  required_selectors:
+    - chat_input
+    - send_button
+    - response_container
+
+  optional_selectors:
+    - login_button
+    - logout_button
+    - new_chat_button
+    - username_indicator
+
+  selector_patterns:
+    # Patterns that valid selectors should follow
+    allowed_formats:
+      - "css_class"     # .classname
+      - "css_id"        # #id
+      - "css_attribute" # [attr=value]
+      - "css_combined"  # combinators like div.class > span
+
+# Version tracking for selector compatibility
+version: "1.0.0"
+last_updated: "2026-02-16"

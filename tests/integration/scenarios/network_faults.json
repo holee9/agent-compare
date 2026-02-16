@@ -1,0 +1,210 @@
+{
+  "scenarios": [
+    {
+      "name": "connection_refused_with_retry",
+      "description": "Network connection refused triggers 2 retries then fallback",
+      "category": "network_fault",
+      "fault_type": "connection_refused",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "connection_refused",
+            "message": "Connection refused"
+          },
+          "expected": "retry"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry_1",
+          "fault": {
+            "type": "connection_refused",
+            "message": "Connection refused"
+          },
+          "expected": "retry"
+        },
+        {
+          "sequence": 3,
+          "provider": "claude",
+          "action": "retry_2",
+          "fault": {
+            "type": "connection_refused",
+            "message": "Connection refused"
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 4,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Here's my analysis..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "retry_count": 2,
+        "fallback_count": 1,
+        "successful_provider": "gemini",
+        "pipeline_status": "completed",
+        "retry_delay_ms": 1000
+      }
+    },
+    {
+      "name": "dns_failure_immediate_fallback",
+      "description": "DNS resolution failure triggers immediate fallback without retry",
+      "category": "network_fault",
+      "fault_type": "dns_failure",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "dns_failure",
+            "message": "DNS resolution failed"
+          },
+          "expected": "immediate_fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Based on my research..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "retry_count": 0,
+        "fallback_count": 1,
+        "successful_provider": "gemini",
+        "dns_error_logged": true
+      }
+    },
+    {
+      "name": "network_interruption_mid_request",
+      "description": "Network interruption during response triggers retry",
+      "category": "network_fault",
+      "fault_type": "network_interruption",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "network_interruption",
+            "timing": "mid_response",
+            "bytes_received": 512
+          },
+          "expected": "retry"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Complete response after retry..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "retry_count": 1,
+        "fallback_count": 0,
+        "successful_provider": "claude",
+        "partial_response_discarded": true
+      }
+    },
+    {
+      "name": "ssl_handshake_failure",
+      "description": "SSL handshake failure triggers fallback",
+      "category": "network_fault",
+      "fault_type": "ssl_error",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "ssl_handshake_failure",
+            "message": "SSL certificate verification failed"
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Here's what I found..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "retry_count": 0,
+        "fallback_count": 1,
+        "successful_provider": "gemini",
+        "ssl_error_logged": true
+      }
+    },
+    {
+      "name": "read_timeout",
+      "description": "Read timeout (connection established but no data)",
+      "category": "network_fault",
+      "fault_type": "read_timeout",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "read_timeout",
+            "duration_ms": 120000
+          },
+          "expected": "retry"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry",
+          "fault": {
+            "type": "read_timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 3,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Gemini response..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "retry_count": 1,
+        "fallback_count": 1,
+        "successful_provider": "gemini"
+      }
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+# Mock AI Provider Responses for Testing
+
+# This file contains sample responses from each AI provider
+# Used for testing fallback chain, response parsing, and error handling
+
+providers:
+  claude:
+    success:
+      short: "Based on my analysis, here are the key findings."
+      long: |
+        Based on my analysis of the request, I can provide the following insights:
+
+        1. The primary consideration is the system architecture
+        2. Secondary factors include performance and scalability
+        3. User experience should be prioritized throughout
+
+        In conclusion, a balanced approach yields the best results.
+      with_sources: |
+        Based on my research, here are the key points:
+
+        According to recent studies (Smith et al., 2023), the optimal approach is...
+
+        Additional research from Johnson (2024) suggests that...
+
+        Therefore, I recommend proceeding with the proposed strategy.
+
+    error:
+      timeout: "Request timeout - no response received within 120 seconds"
+      rate_limit: "Rate limit exceeded - please try again later"
+      server_error: "I apologize, but I'm unable to complete this request due to a server error."
+      invalid_request: "I couldn't process that request. Please rephrase and try again."
+
+  gemini:
+    success:
+      short: "Here's what I found on this topic."
+      long: |
+        Let me provide a comprehensive analysis:
+
+        First, we should consider the technical requirements. The system needs to...
+
+        Second, business constraints suggest that we should prioritize...
+
+        Finally, the timeline indicates that a phased approach would be optimal.
+
+        Overall, this strategy balances all key factors effectively.
+      with_sources: |
+        Based on my analysis:
+
+        Research indicates that the most effective approach is...
+
+        Multiple sources confirm this recommendation:
+        - Source A demonstrates...
+        - Source B provides evidence for...
+
+        Consequently, I suggest implementing this solution.
+
+    error:
+      timeout: "Request timed out - no response received"
+      rate_limit: "Too many requests - please wait before trying again"
+      server_error: "I couldn't process that request due to an error."
+      invalid_request: "That request couldn't be processed. Please try again."
+
+  chatgpt:
+    success:
+      short: "Let me help you with that."
+      long: |
+        I'd be happy to help with this. Here's my analysis:
+
+        The key points to consider are:
+
+        1. Technical feasibility
+        2. Cost implications
+        3. Time to implement
+
+        Taking all these factors into account, I recommend...
+
+        Let me know if you need any clarification on these points.
+      with_sources: |
+        Here's what I found:
+
+        According to my knowledge, the best approach is to...
+
+        This is supported by multiple sources which indicate...
+
+        Therefore, my recommendation is to proceed with this plan.
+
+    error:
+      timeout: "The request timed out. Please try again."
+      rate_limit: "You've reached the rate limit. Please wait."
+      server_error: "Sorry, I encountered an error processing your request."
+      invalid_request: "I couldn't understand that request. Could you rephrase?"
+
+  perplexity:
+    success:
+      short: "Here's what I found from searching."
+      long: |
+        Based on my search results, here's what I found:
+
+        Recent developments in this area show that...
+
+        Several sources indicate that the most effective approach is...
+
+        The consensus among experts is that...
+
+        In summary, the evidence points to this conclusion.
+      with_sources: |
+        According to multiple sources:
+
+        Source 1 states that...
+        Source 2 confirms this with...
+        Source 3 provides additional context...
+
+        The consistent theme across these sources is...
+
+        Therefore, the recommended action is...
+
+    error:
+      timeout: "Search request timed out."
+      rate_limit: "Too many search requests. Please wait."
+      server_error: "I encountered an error during the search."
+      invalid_request: "I couldn't process that search query."
+
+# Fallback test scenarios
+fallback_scenarios:
+  single_timeout:
+    description: "Claude times out, fallback to Gemini succeeds"
+    primary:
+      provider: "claude"
+      response: "timeout"
+    fallback:
+      provider: "gemini"
+      response: "success"
+      expected: "Gemini response used"
+
+  cascade_failures:
+    description: "All providers fail, graceful shutdown"
+    providers:
+      - provider: "claude"
+        response: "timeout"
+      - provider: "gemini"
+        response: "timeout"
+      - provider: "chatgpt"
+        response: "timeout"
+      - provider: "perplexity"
+        response: "timeout"
+    expected: "Graceful shutdown with error notification"
+
+  partial_recovery:
+    description: "Claude and Gemini fail, ChatGPT succeeds"
+    providers:
+      - provider: "claude"
+        response: "timeout"
+      - provider: "gemini"
+        response: "error"
+      - provider: "chatgpt"
+        response: "success"
+    expected: "Pipeline completes with ChatGPT response"
+
+# Response quality metrics
+quality_metrics:
+  min_response_length: 50
+  max_response_length: 50000
+  required_keywords:
+    - "analysis"
+    - "recommendation"
+    - "conclusion"
+  response_time_threshold: 30.0

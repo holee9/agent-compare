@@ -13,6 +13,7 @@ from rich.console import Console
 from rich.table import Table
 
 from core import get_settings
+from gateway import SelectorLoader, SelectorValidationError
 from gateway.session import SessionManager
 
 app = typer.Typer(help="Check AigenFlow system status")
@@ -38,6 +39,81 @@ def _format_session_status(provider: str, is_valid: bool) -> str:
     return "[green]✓[/green]" if is_valid else "[red]✗[/red]"
 
 
+def _check_selectors(selector_path: Path | None = None, verbose: bool = False) -> bool:
+    """
+    Check DOM selector configuration.
+
+    Args:
+        selector_path: Custom path to selectors.yaml (default: src/gateway/selectors.yaml)
+        verbose: Show detailed selector information
+
+    Returns:
+        True if selectors are valid, False otherwise
+    """
+    # Default selector file path
+    if selector_path is None:
+        project_root = Path(__file__).parent.parent.parent
+        selector_path = project_root / "src" / "gateway" / "selectors.yaml"
+
+    console.print("\n[bold]DOM Selectors:[/bold]")
+
+    try:
+        loader = SelectorLoader(selector_path)
+        config = loader.load()
+
+        # Create selector table
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Provider", style="cyan", width=12)
+        table.add_column("Required Selectors", style="white")
+        table.add_column("Status", width=8)
+
+        required = config.validation.required_selectors
+
+        for provider_name in sorted(config.providers.keys()):
+            provider_selectors = config.providers[provider_name]
+            missing = [key for key in required if key not in provider_selectors]
+
+            if missing:
+                status = "[red]✗ Missing[/red]"
+                selector_info = f"[red]Missing: {', '.join(missing)}[/red]"
+            else:
+                status = "[green]✓ OK[/green]"
+                if verbose:
+                    selector_list = ", ".join(f"{k}=[dim]{v}[/dim]" for k, v in provider_selectors.items() if k in required)
+                    selector_info = selector_list[:50] + "..." if len(selector_list) > 50 else selector_list
+                else:
+                    selector_info = f"{len(required)}/{len(required)} present"
+
+            table.add_row(provider_name.capitalize(), selector_info, status)
+
+        console.print(table)
+
+        # Show version info if verbose
+        if verbose:
+            console.print(f"\n[dim]Selector file: {selector_path}[/dim]")
+            console.print(f"[dim]Version: {config.version}[/dim]")
+            if config.last_updated:
+                console.print(f"[dim]Last updated: {config.last_updated}[/dim]")
+
+        # Check if any provider is missing required selectors
+        for provider_name in config.providers:
+            provider_selectors = config.providers[provider_name]
+            missing = [key for key in required if key not in provider_selectors]
+            if missing:
+                return False
+
+        return True
+
+    except SelectorValidationError as exc:
+        console.print(f"  [red]✗ Selector validation failed: {exc.message}[/red]")
+        if verbose and exc.details:
+            console.print(f"  [dim]Details: {exc.details}[/dim]")
+        return False
+    except Exception as exc:
+        console.print(f"  [red]✗ Error loading selectors: {exc}[/red]")
+        return False
+
+
 async def _check_sessions(settings: Any, verbose: bool = False) -> dict[str, bool]:
     """Check all AI provider sessions."""
     session_manager = SessionManager(settings)
@@ -61,7 +137,14 @@ async def _check_sessions(settings: Any, verbose: bool = False) -> dict[str, boo
 
 
 @app.command()
-def check(
+def check_cmd(
+    selectors: bool = typer.Option(False, "--selectors", help="Check DOM selector configuration"),
+    selector_file: Path = typer.Option(
+        None,
+        "--selector-file",
+        help="Custom path to selectors.yaml file",
+        exists=True,
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed status"),
 ) -> None:
     """
@@ -70,6 +153,7 @@ def check(
     Displays status of:
     - Playwright browser installation
     - AI provider session validity (ChatGPT, Claude, Gemini, Perplexity)
+    - DOM selector configuration (with --selectors flag)
     """
     settings = get_settings()
 
@@ -86,7 +170,12 @@ def check(
         console.print("\n[yellow]Run: playwright install chromium[/yellow]")
         sys.exit(1)
 
-    # Check AI provider sessions
+    # Check selectors if requested
+    selectors_ok = True
+    if selectors:
+        selectors_ok = _check_selectors(selector_file, verbose)
+
+    # Check AI provider sessions (default behavior)
     console.print("\n[bold]AI Provider Sessions:[/bold]")
 
     import asyncio
@@ -115,6 +204,10 @@ def check(
         else:
             console.print("\n[green]✓ All systems operational![/green]")
 
+        # Exit with error if selectors check failed
+        if selectors and not selectors_ok:
+            sys.exit(1)
+
     except Exception as exc:
         console.print(f"\n[red]Error checking sessions: {exc}[/red]")
         if verbose:
@@ -125,4 +218,4 @@ def check(
 
 
 if __name__ == "__main__":
-    typer.run(check)
+    typer.run(check_cmd)

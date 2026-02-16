@@ -6,9 +6,10 @@ from .base import BaseProvider
 from .chatgpt_provider import ChatGPTProvider
 from .claude_provider import ClaudeProvider
 from .gemini_provider import GeminiProvider
-from .perplexity_provider import PerplexityProvider
-from .session import SessionManager
 from .models import GatewayRequest, GatewayResponse
+from .perplexity_provider import PerplexityProvider
+from .selector_loader import SelectorConfig, SelectorLoader, SelectorValidationError
+from .session import SessionManager
 
 __all__ = [
     "BaseProvider",
@@ -19,4 +20,7 @@ __all__ = [
     "SessionManager",
     "GatewayRequest",
     "GatewayResponse",
+    "SelectorLoader",
+    "SelectorConfig",
+    "SelectorValidationError",
 ]

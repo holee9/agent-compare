@@ -1,0 +1,220 @@
+{
+  "scenarios": [
+    {
+      "name": "all_providers_timeout_graceful_shutdown",
+      "description": "Every provider times out, system performs graceful shutdown",
+      "category": "cascade_failure",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 3,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 4,
+          "provider": "gemini",
+          "action": "retry",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 5,
+          "provider": "chatgpt",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 6,
+          "provider": "chatgpt",
+          "action": "retry",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 7,
+          "provider": "perplexity",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 8,
+          "provider": "perplexity",
+          "action": "retry",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "graceful_shutdown"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 7,
+        "successful_provider": null,
+        "pipeline_status": "failed",
+        "user_notified": true,
+        "state_saved": true,
+        "final_error": "All AI providers are unavailable",
+        "logs": [
+          {
+            "level": "ERROR",
+            "contains": "All providers failed"
+          },
+          {
+            "level": "INFO",
+            "contains": "State saved"
+          }
+        ]
+      }
+    },
+    {
+      "name": "full_chain_perplexity_succeeds",
+      "description": "Claude, Gemini, ChatGPT all fail, Perplexity succeeds",
+      "category": "cascade_failure",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "error",
+            "code": 500
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 3,
+          "provider": "chatgpt",
+          "action": "send_request",
+          "fault": {
+            "type": "error",
+            "code": 503
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 4,
+          "provider": "perplexity",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Based on my search results..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 3,
+        "successful_provider": "perplexity",
+        "pipeline_status": "completed",
+        "attempted_providers": ["claude", "gemini", "chatgpt", "perplexity"],
+        "transition_log": [
+          "claude -> gemini (error 500)",
+          "gemini -> chatgpt (timeout)",
+          "chatgpt -> perplexity (error 503)"
+        ]
+      }
+    },
+    {
+      "name": "partial_recovery_after_failures",
+      "description": "Multiple failures but eventually succeeds",
+      "category": "cascade_failure",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout"
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry",
+          "fault": {
+            "type": "timeout"
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 3,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": {
+            "type": "error",
+            "code": 500
+          },
+          "expected": "fallback"
+        },
+        {
+          "sequence": 4,
+          "provider": "chatgpt",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "I can help with that..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 2,
+        "successful_provider": "chatgpt",
+        "total_attempts": 4,
+        "pipeline_status": "completed"
+      }
+    }
+  ]
+}

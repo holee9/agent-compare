@@ -1,0 +1,311 @@
+# Fault Injection Scenarios for Testing
+
+# Predefined fault scenarios for testing the fallback chain mechanism
+# Each scenario defines a sequence of provider failures and expected behavior
+
+scenarios:
+  # Single Provider Failures
+  claude_timeout_only:
+    name: "Claude Timeout Only"
+    description: "Claude times out on first request, Gemini succeeds"
+    category: "single_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "timeout"
+        duration_ms: 120000
+      - phase: "phase1"
+        provider: "gemini"
+        fault: null
+        response: "success"
+    expected:
+      fallback_count: 1
+      successful_provider: "gemini"
+      pipeline_status: "completed"
+      log_entries:
+        - level: "WARNING"
+          message: "Claude timeout, falling back to Gemini"
+
+  claude_error_response:
+    name: "Claude Error Response"
+    description: "Claude returns error, fallback to ChatGPT"
+    category: "single_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "error"
+        error_code: 500
+      - phase: "phase1"
+        provider: "chatgpt"
+        fault: null
+        response: "success"
+    expected:
+      fallback_count: 1
+      successful_provider: "chatgpt"
+      pipeline_status: "completed"
+
+  claude_rate_limit:
+    name: "Claude Rate Limited"
+    description: "Claude returns rate limit, immediate fallback to Gemini"
+    category: "single_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "rate_limit"
+        retry_after: 60
+      - phase: "phase1"
+        provider: "gemini"
+        fault: null
+        response: "success"
+    expected:
+      fallback_count: 1
+      successful_provider: "gemini"
+      retry_count: 0  # No retry for rate limit
+
+  # Cascade Failures
+  all_providers_timeout:
+    name: "All Providers Timeout"
+    description: "Every provider times out, graceful shutdown"
+    category: "cascade_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "timeout"
+      - phase: "phase1"
+        provider: "gemini"
+        fault: "timeout"
+      - phase: "phase1"
+        provider: "chatgpt"
+        fault: "timeout"
+      - phase: "phase1"
+        provider: "perplexity"
+        fault: "timeout"
+    expected:
+      fallback_count: 3
+      successful_provider: null
+      pipeline_status: "failed"
+      user_notified: true
+      state_saved: true
+
+  full_chain_with_errors:
+    name: "Full Chain Error Cascade"
+    description: "Claude error, Gemini timeout, ChatGPT error, Perplexity success"
+    category: "cascade_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "error"
+        error_code: 500
+      - phase: "phase1"
+        provider: "gemini"
+        fault: "timeout"
+      - phase: "phase1"
+        provider: "chatgpt"
+        fault: "error"
+        error_code: 503
+      - phase: "phase1"
+        provider: "perplexity"
+        fault: null
+        response: "success"
+    expected:
+      fallback_count: 3
+      successful_provider: "perplexity"
+      pipeline_status: "completed"
+
+  # Network Faults
+  connection_refused:
+    name: "Connection Refused with Retry"
+    description: "Network connection refused, 2 retries, then fallback"
+    category: "network_fault"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "connection_refused"
+        retry: true
+        retry_count: 2
+      - phase: "phase1"
+        provider: "gemini"
+        fault: null
+        response: "success"
+    expected:
+      retry_count: 2
+      fallback_count: 1
+      successful_provider: "gemini"
+
+  dns_failure:
+    name: "DNS Resolution Failure"
+    description: "DNS fails, immediate fallback without retry"
+    category: "network_fault"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "dns_failure"
+        retry: false
+      - phase: "phase1"
+        provider: "gemini"
+        fault: null
+        response: "success"
+    expected:
+      retry_count: 0
+      fallback_count: 1
+      successful_provider: "gemini"
+
+  # Partial Failures (Multi-Phase)
+  phase1_success_phase2_fallback:
+    name: "Multi-Phase Partial Failure"
+    description: "Phase 1 succeeds with Claude, Phase 2 requires fallback"
+    category: "partial_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: null
+        response: "success"
+        result: "phase1_result"
+      - phase: "phase2"
+        provider: "claude"
+        fault: "timeout"
+      - phase: "phase2"
+        provider: "gemini"
+        fault: null
+        response: "success"
+        result: "phase2_result"
+    expected:
+      phase1_provider: "claude"
+      phase2_provider: "gemini"
+      phase1_result_preserved: true
+      pipeline_status: "completed"
+
+  multiple_fallbacks_single_phase:
+    name: "Multiple Fallbacks in Single Phase"
+    description: "Claude and Gemini fail, ChatGPT succeeds"
+    category: "partial_failure"
+    steps:
+      - phase: "phase1"
+        provider: "claude"
+        fault: "timeout"
+      - phase: "phase1"
+        provider: "gemini"
+        fault: "error"
+      - phase: "phase1"
+        provider: "chatgpt"
+        fault: null
+        response: "success"
+    expected:
+      fallback_count: 2
+      successful_provider: "chatgpt"
+      attempted_providers: ["claude", "gemini", "chatgpt"]
+
+# Circuit Breaker Scenarios
+circuit_breaker_scenarios:
+  opens_after_threshold:
+    name: "Circuit Opens After Threshold"
+    description: "3 consecutive failures open the circuit"
+    category: "circuit_breaker"
+    provider: "claude"
+    steps:
+      - attempt: 1
+        fault: "timeout"
+        circuit_state: "closed"
+      - attempt: 2
+        fault: "timeout"
+        circuit_state: "closed"
+      - attempt: 3
+        fault: "timeout"
+        circuit_state: "open"
+      - attempt: 4
+        fault: null
+        circuit_state: "open"
+        expected: "request_bypassed"
+    expected:
+      circuit_opens_after: 3
+      requests_bypassed: true
+
+  recovers_after_timeout:
+    name: "Circuit Recovers After Timeout"
+    description: "Circuit opens, timeout expires, closes on success"
+    category: "circuit_breaker"
+    provider: "claude"
+    steps:
+      - attempt: 1
+        fault: "timeout"
+      - attempt: 2
+        fault: "timeout"
+      - attempt: 3
+        fault: "timeout"
+        circuit_state: "open"
+      - wait_seconds: 60
+      - attempt: 4
+        fault: null
+        response: "success"
+        circuit_state: "half_open"
+      - attempt: 5
+        fault: null
+        response: "success"
+        circuit_state: "closed"
+    expected:
+      recovery_timeout: 60
+      circuit_closes: true
+
+# Fault Types Configuration
+fault_types:
+  timeout:
+    description: "Request exceeds timeout duration"
+    retry: true
+    max_retries: 2
+    circuit_breaker_count: true
+
+  error:
+    description: "Provider returns error response"
+    error_codes: [500, 502, 503, 504]
+    retry: true
+    max_retries: 2
+    circuit_breaker_count: true
+
+  rate_limit:
+    description: "Provider rate limit exceeded"
+    status_code: 429
+    retry: false
+    circuit_breaker_count: false
+
+  connection_refused:
+    description: "Network connection refused"
+    retry: true
+    max_retries: 2
+    circuit_breaker_count: true
+
+  dns_failure:
+    description: "DNS resolution failed"
+    retry: false
+    circuit_breaker_count: true
+
+  malformed_response:
+    description: "Provider returns invalid response"
+    retry: false
+    circuit_breaker_count: true
+
+# Provider Configuration
+providers:
+  claude:
+    max_tokens: 200000
+    timeout_seconds: 120
+    priority: 1
+    context_window: "large"
+
+  gemini:
+    max_tokens: 1000000
+    timeout_seconds: 120
+    priority: 2
+    context_window: "very_large"
+
+  chatgpt:
+    max_tokens: 128000
+    timeout_seconds: 120
+    priority: 3
+    context_window: "medium"
+
+  perplexity:
+    max_tokens: 128000
+    timeout_seconds: 120
+    priority: 4
+    context_window: "medium"
+    has_search: true

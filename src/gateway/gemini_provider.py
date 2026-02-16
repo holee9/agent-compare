@@ -6,10 +6,9 @@ Uses Playwright to interact with gemini.google.com.
 
 from pathlib import Path
 
-from pydantic import Field
-
-from src.core.exceptions import GatewayException, ErrorCode
+from src.core.models import AgentType
 from src.gateway.base import BaseProvider, GatewayRequest, GatewayResponse
+from src.gateway.selector_loader import SelectorLoader
 
 
 class GeminiProvider(BaseProvider):
@@ -19,12 +18,16 @@ class GeminiProvider(BaseProvider):
     Handles login, message sending, and session management.
     """
 
+    agent_type: AgentType = AgentType.GEMINI
+    provider_name: str = "gemini"
+
     def __init__(
         self,
         profile_dir: Path,
         headless: bool = True,
+        selector_loader: SelectorLoader | None = None,
     ) -> None:
-        super().__init__(profile_dir, headless)
+        super().__init__(profile_dir, headless, selector_loader)
         self.base_url = "https://gemini.google.com"
 
     async def send_message(self, request: GatewayRequest) -> GatewayResponse:

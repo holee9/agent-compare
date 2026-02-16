@@ -7,9 +7,8 @@ Implements 4-stage auto-recovery chain for session management.
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from src.core.exceptions import GatewayException, ErrorCode
 from src.core.logger import get_logger, redact_secrets
 from src.gateway.base import BaseProvider
 

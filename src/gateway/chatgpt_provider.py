@@ -6,11 +6,9 @@ Uses Playwright to interact with chat.openai.com.
 
 from pathlib import Path
 
-from pydantic import Field
-
-from src.core.exceptions import GatewayException, ErrorCode
-from src.gateway.base import BaseProvider, GatewayRequest, GatewayResponse
 from src.core.models import AgentType
+from src.gateway.base import BaseProvider, GatewayRequest, GatewayResponse
+from src.gateway.selector_loader import SelectorLoader
 
 
 class ChatGPTProvider(BaseProvider):
@@ -21,13 +19,15 @@ class ChatGPTProvider(BaseProvider):
     """
 
     agent_type: AgentType = AgentType.CHATGPT
+    provider_name: str = "chatgpt"
 
     def __init__(
         self,
         profile_dir: Path,
         headless: bool = True,
+        selector_loader: SelectorLoader | None = None,
     ) -> None:
-        super().__init__(profile_dir, headless)
+        super().__init__(profile_dir, headless, selector_loader)
         self.base_url = "https://chat.openai.com"
 
     async def send_message(self, request: GatewayRequest) -> GatewayResponse:

@@ -1,0 +1,130 @@
+{
+  "scenarios": [
+    {
+      "name": "claude_timeout_gemini_success",
+      "description": "Claude times out on first request, system falls back to Gemini which succeeds",
+      "category": "single_failure",
+      "fault_type": "timeout",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback_triggered"
+        },
+        {
+          "sequence": 2,
+          "provider": "claude",
+          "action": "retry",
+          "fault": {
+            "type": "timeout",
+            "duration_ms": 120000
+          },
+          "expected": "fallback_triggered"
+        },
+        {
+          "sequence": 3,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Here is the Gemini response..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 1,
+        "retry_count": 2,
+        "successful_provider": "gemini",
+        "pipeline_status": "completed",
+        "logs": [
+          {
+            "level": "WARNING",
+            "contains": "Claude timeout"
+          },
+          {
+            "level": "INFO",
+            "contains": "Falling back to Gemini"
+          }
+        ]
+      }
+    },
+    {
+      "name": "gemini_error_chatgpt_success",
+      "description": "Gemini returns error response, system falls back to ChatGPT",
+      "category": "single_failure",
+      "fault_type": "error",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": {
+            "type": "error",
+            "code": 500,
+            "message": "Internal server error"
+          },
+          "expected": "fallback_triggered"
+        },
+        {
+          "sequence": 2,
+          "provider": "chatgpt",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Let me help you with that..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 1,
+        "successful_provider": "chatgpt",
+        "pipeline_status": "completed"
+      }
+    },
+    {
+      "name": "claude_rate_limit",
+      "description": "Claude returns rate limit, immediate fallback to Gemini without retry",
+      "category": "single_failure",
+      "fault_type": "rate_limit",
+      "steps": [
+        {
+          "sequence": 1,
+          "provider": "claude",
+          "action": "send_request",
+          "fault": {
+            "type": "rate_limit",
+            "code": 429,
+            "retry_after": 60
+          },
+          "expected": "immediate_fallback"
+        },
+        {
+          "sequence": 2,
+          "provider": "gemini",
+          "action": "send_request",
+          "fault": null,
+          "response": {
+            "success": true,
+            "content": "Here's what I found..."
+          },
+          "expected": "success"
+        }
+      ],
+      "assertions": {
+        "fallback_count": 1,
+        "retry_count": 0,
+        "successful_provider": "gemini",
+        "rate_limit_logged": true
+      }
+    }
+  ]
+}
