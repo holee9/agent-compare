@@ -2,10 +2,10 @@
 Custom exceptions for AigenFlow pipeline.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class AigenFlowException(Exception):
+class AigenFlowException(Exception):  # noqa: N818
     """Base exception for all aigenflow errors."""
 
     def __init__(self, message: str, details: dict | None = None) -> None:
@@ -39,7 +39,7 @@ class ConfigurationException(AigenFlowException):
     pass
 
 
-class ErrorCode(str, Enum):
+class ErrorCode(StrEnum):
     """Standardized error codes for tracking and debugging."""
 
     PIPELINE_INVALID_STATE = "P1001"

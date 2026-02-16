@@ -87,7 +87,6 @@ def setup_app(
 
     # Override headless setting if --headed flag is provided
     if headed:
-        original_headless = settings.playwright_headless
         settings.playwright_headless = False
 
     # Import asyncio here to avoid issues with tests

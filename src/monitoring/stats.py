@@ -9,12 +9,12 @@ Provides statistics collection functionality:
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 
 from src.monitoring.tracker import TokenTracker, TokenUsage
 
 
-class Period(str, Enum):
+class Period(StrEnum):
     """Time period for statistics."""
 
     DAILY = "daily"

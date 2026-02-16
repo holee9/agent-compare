@@ -1,6 +1,7 @@
 """
-Claude.ai Reproducibility Test - Using PoC (simple) approach.
-This matches the successful PoC pattern exactly.
+Claude.ai Reproducibility Test - Single Context Pattern.
+Refactored to open browser ONCE and run all iterations within same context.
+This prevents the repeated browser opening issue.
 """
 
 import asyncio
@@ -44,7 +45,7 @@ def calculate_similarity(text1: str, text2: str) -> dict:
 
 
 async def test_claude_reproducibility():
-    """Test Claude reproducibility using PoC pattern."""
+    """Test Claude reproducibility using single context pattern."""
     profile_path = PROFILE_DIR / "claude"
 
     if not profile_path.exists():
@@ -55,131 +56,171 @@ async def test_claude_reproducibility():
     errors = []
 
     print("\n" + "="*60)
-    print("CLAUDE REPRODUCIBILITY TEST (PoC Pattern)")
+    print("CLAUDE REPRODUCIBILITY TEST (Single Context Pattern)")
     print("="*60)
 
-    # Use exact PoC pattern - simple args
-    args = ["--disable-blink-features=AutomationControlled"]
+    # Enhanced anti-detection launch arguments
+    args = [
+        "--disable-blink-features=AutomationControlled",
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--window-size=1280,800",
+    ]
 
-    for i in range(3):
-        print(f"\nIteration {i+1}/3...")
+    # Single context pattern - open browser ONCE
+    async with async_playwright() as p:
+        # Enhanced anti-detection configuration
+        context = await p.chromium.launch_persistent_context(
+            str(profile_path),
+            headless=False,
+            channel=BROWSER_CHANNEL,
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            args=args,
+            ignore_default_args=["--enable-automation", "--enable-blink-features=IdleDetection"],
+        )
+        page = context.pages[0] if context.pages else await context.new_page()
 
-        async with async_playwright() as p:
-            # Exact PoC launch pattern
-            context = await p.chromium.launch_persistent_context(
-                str(profile_path),
-                headless=False,
-                channel=BROWSER_CHANNEL,
-                viewport={"width": 1280, "height": 800},
-                args=args,  # Only this arg, like PoC
-            )
-            page = context.pages[0] if context.pages else await context.new_page()
+        # Inject anti-detection script
+        await page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
 
-            try:
-                print("  Navigating to claude.ai...")
-                await page.goto("https://claude.ai", wait_until="domcontentloaded", timeout=30000)
+            // Hide automation indicators
+            window.chrome = {
+                runtime: {}
+            };
 
-                # Check for login
-                current_url = page.url
-                if "login" in current_url.lower():
-                    print("  ✗ Not logged in")
-                    await context.close()
-                    return None
+            // Mock permissions
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+        """)
 
-                print("  Session valid ✓")
-                await asyncio.sleep(2)
+        try:
+            print("  Navigating to claude.ai...")
+            await page.goto("https://claude.ai", wait_until="domcontentloaded", timeout=30000)
 
-                # Find input - use simple selector
-                print("  Finding input field...")
-                await page.wait_for_selector("[contenteditable='true']", timeout=10000)
+            # Check for login
+            current_url = page.url
+            if "login" in current_url.lower():
+                print("  ✗ Not logged in")
+                await context.close()
+                return None
 
-                editable = await page.query_selector("[contenteditable='true']")
-                if not editable:
-                    errors.append(f"Iteration {i+1}: No input field found")
-                    print("  ✗ No input field")
-                    await context.close()
-                    continue
+            print("  Session valid ✓")
+            await asyncio.sleep(2)
 
-                # Type message
-                print("  Typing message...")
-                await editable.fill(PROMPT)
-                await asyncio.sleep(1)
+            # All iterations within the same browser context
+            for i in range(3):
+                print(f"\nIteration {i+1}/3...")
 
-                # Submit
-                await editable.press("Enter")
-                print("  Message sent, waiting for response...")
+                try:
+                    # Find input - use simple selector
+                    print("  Finding input field...")
+                    await page.wait_for_selector("[contenteditable='true']", timeout=10000)
 
-                # Wait for response
-                await asyncio.sleep(20)
-
-                # Capture response - try multiple selectors
-                print("  Capturing response...")
-                selectors = [
-                    "div[data-testid='message-content']",
-                    "div[data-message-author-role='assistant']",
-                    "article[class*='message']",
-                    "[class*='assistant']",
-                ]
-
-                captured = False
-                for selector in selectors:
-                    if captured:
-                        break
-                    try:
-                        elements = await page.query_selector_all(selector)
-                        if elements and len(elements) > 0:
-                            # Get last substantial message
-                            for elem in reversed(elements[-3:]):
-                                text = await elem.inner_text()
-                                if len(text) > 30:
-                                    responses.append({
-                                        "iteration": i + 1,
-                                        "content": text,
-                                        "length": len(text),
-                                        "hash": hashlib.md5(text.encode()).hexdigest(),
-                                    })
-                                    print(f"  ✓ Captured: {len(text)} chars (selector: {selector})")
-                                    captured = True
-                                    break
-                    except:
+                    editable = await page.query_selector("[contenteditable='true']")
+                    if not editable:
+                        errors.append(f"Iteration {i+1}: No input field found")
+                        print("  ✗ No input field")
                         continue
 
-                if not captured:
-                    # Last resort - get page text
-                    try:
-                        body_text = await page.inner_text("body")
-                        if body_text and len(body_text) > 100:
-                            # Find last occurrence of Korean text or substantial content
-                            lines = body_text.split("\n")
-                            content_lines = []
-                            for line in reversed(lines[-50:]):
-                                if len(line) > 20:
-                                    content_lines.insert(0, line)
-                                    if len("\n".join(content_lines)) > 50:
+                    # Type message
+                    print("  Typing message...")
+                    await editable.fill(PROMPT)
+                    await asyncio.sleep(1)
+
+                    # Submit
+                    await editable.press("Enter")
+                    print("  Message sent, waiting for response...")
+
+                    # Wait for response
+                    await asyncio.sleep(20)
+
+                    # Capture response - try multiple selectors
+                    print("  Capturing response...")
+                    selectors = [
+                        "div[data-testid='message-content']",
+                        "div[data-message-author-role='assistant']",
+                        "article[class*='message']",
+                        "[class*='assistant']",
+                    ]
+
+                    captured = False
+                    for selector in selectors:
+                        if captured:
+                            break
+                        try:
+                            elements = await page.query_selector_all(selector)
+                            if elements and len(elements) > 0:
+                                # Get last substantial message
+                                for elem in reversed(elements[-3:]):
+                                    text = await elem.inner_text()
+                                    if len(text) > 30:
+                                        responses.append({
+                                            "iteration": i + 1,
+                                            "content": text,
+                                            "length": len(text),
+                                            "hash": hashlib.md5(text.encode()).hexdigest(),
+                                        })
+                                        print(f"  ✓ Captured: {len(text)} chars (selector: {selector})")
+                                        captured = True
                                         break
+                        except:
+                            continue
 
-                            if content_lines:
-                                content = "\n".join(content_lines)
-                                responses.append({
-                                    "iteration": i + 1,
-                                    "content": content,
-                                    "length": len(content),
-                                    "hash": hashlib.md5(content.encode()).hexdigest(),
-                                })
-                                print(f"  ✓ Captured from body: {len(content)} chars")
-                                captured = True
-                    except:
-                        pass
+                    if not captured:
+                        # Last resort - get page text
+                        try:
+                            body_text = await page.inner_text("body")
+                            if body_text and len(body_text) > 100:
+                                # Find last occurrence of Korean text or substantial content
+                                lines = body_text.split("\n")
+                                content_lines = []
+                                for line in reversed(lines[-50:]):
+                                    if len(line) > 20:
+                                        content_lines.insert(0, line)
+                                        if len("\n".join(content_lines)) > 50:
+                                            break
 
-                if not captured:
-                    errors.append(f"Iteration {i+1}: No response captured")
-                    print("  ✗ No response captured")
+                                if content_lines:
+                                    content = "\n".join(content_lines)
+                                    responses.append({
+                                        "iteration": i + 1,
+                                        "content": content,
+                                        "length": len(content),
+                                        "hash": hashlib.md5(content.encode()).hexdigest(),
+                                    })
+                                    print(f"  ✓ Captured from body: {len(content)} chars")
+                                    captured = True
+                        except:
+                            pass
 
-            except Exception as e:
-                errors.append(f"Iteration {i+1}: {str(e)}")
-                print(f"  ✗ Error: {e}")
+                    if not captured:
+                        errors.append(f"Iteration {i+1}: No response captured")
+                        print("  ✗ No response captured")
 
-            await context.close()
+                    # Clear input for next iteration
+                    await editable.fill("")
+                    await asyncio.sleep(1)
+
+                except Exception as e:
+                    errors.append(f"Iteration {i+1}: {str(e)}")
+                    print(f"  ✗ Error: {e}")
+
+        except Exception as e:
+            errors.append(f"Setup error: {str(e)}")
+            print(f"  ✗ Setup error: {e}")
+
+        await context.close()
 
     # Calculate similarities
     if len(responses) >= 2:

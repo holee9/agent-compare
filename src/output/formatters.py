@@ -6,7 +6,7 @@ Provides formatters for Markdown, DOCX, and PDF output formats.
 
 import io
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from src.core.logger import get_logger
@@ -14,7 +14,7 @@ from src.core.logger import get_logger
 logger = get_logger(__name__)
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Supported output formats."""
 
     MARKDOWN = "md"

@@ -3,6 +3,8 @@ Tests for CLI layer.
 """
 
 import pytest
+from unittest.mock import MagicMock
+from typer import Context as TyperContext
 
 
 class TestCLI:
@@ -22,7 +24,12 @@ class TestCLI:
         # Just test that main can be called without error
         # (it will print help and exit normally)
         try:
-            main()
+            main(
+                ctx=MagicMock(spec=TyperContext, invoked_subcommand=None),
+                version=False,
+                log_level="warning",
+                environment="production",
+            )
         except SystemExit:
             # Expected - typer Exit raises SystemExit
             pass

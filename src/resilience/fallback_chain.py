@@ -7,7 +7,7 @@ Follows the chain: Claude -> Gemini -> ChatGPT -> Perplexity.
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -43,7 +43,7 @@ class FallbackConfig(BaseModel):
 class FallbackReason:
     """Reason for fallback decision."""
 
-    class Type(str, Enum):
+    class Type(StrEnum):
         """Types of failure reasons."""
         TIMEOUT = "timeout"
         CONNECTION_ERROR = "connection_error"
@@ -89,7 +89,7 @@ class FallbackContext:
 class FallbackDecision:
     """Decision made by fallback chain."""
 
-    class Action(str, Enum):
+    class Action(StrEnum):
         """Possible actions."""
         RETRY = "retry"
         FALLBACK = "fallback"

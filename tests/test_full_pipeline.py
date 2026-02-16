@@ -45,9 +45,9 @@ async def test_full_pipeline():
             )
 
     for agentType in [AgentType.CHATGPT, AgentType.CLAUDE, AgentType.GEMINI, AgentType.PERPLEXITY]:
-        mock_agent = MockAgent(AgentType)
-        orchestrator.agent_router.register_agent(AgentType.value, mock_agent)
-        print(f"✅ {AgentType.value} Mock Agent 등록 완료")
+        mock_agent = MockAgent(agentType.value)
+        orchestrator.agent_router.register_agent(agentType.value, mock_agent)
+        print(f"✅ {agentType.value} Mock Agent 등록 완료")
 
     # Create session
     session = orchestrator.create_session(config=config)

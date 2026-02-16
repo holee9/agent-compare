@@ -4,7 +4,7 @@ Agent router for mapping (phase, task) to AI agent.
 Implements the routing table defined in SPEC-PIPELINE-001.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel
@@ -14,7 +14,7 @@ from src.core.exceptions import AgentException
 from src.core.models import AgentType, DocumentType
 
 
-class PhaseTask(str, Enum):
+class PhaseTask(StrEnum):
     """Task types for each phase."""
 
     # Phase 1: Ideation

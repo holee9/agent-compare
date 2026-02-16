@@ -434,7 +434,6 @@ class TestTokenReduction:
     async def test_token_reduction_achieved(self, mock_agent_router, sample_phase_results):
         """Test that summarization achieves target token reduction."""
         # Create a mock response that significantly reduces content
-        original_content = "Original content " * 1000  # Long content
         summarized_content = "Brief summary " * 50  # Short summary
 
         mock_response = AgentResponse(
@@ -471,7 +470,6 @@ class TestTokenReduction:
         # Create mock response with roughly 50% of original tokens
         # Note: The actual reduction depends on token counting, so we just verify
         # that summarization produces a shorter result
-        original_summary = "This is the original context that needs to be summarized. " * 20
         condensed_summary = "Condensed summary maintaining key points."
 
         mock_response = AgentResponse(

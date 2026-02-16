@@ -8,14 +8,14 @@ Provides real-time log streaming with:
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     """Log level enumeration."""
 
     DEBUG = "DEBUG"

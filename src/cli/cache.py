@@ -14,7 +14,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from cache import CacheManager
+from src.cache.manager import CacheManager
 
 app = typer.Typer(help="Cache management commands")
 console = Console()

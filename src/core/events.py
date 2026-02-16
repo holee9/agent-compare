@@ -3,7 +3,7 @@ Event system for pipeline execution tracking.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -13,7 +13,7 @@ from core.logger import get_logger, redact_secrets
 logger = get_logger(__name__)
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     PIPELINE_STARTED = "pipeline_started"
     PIPELINE_COMPLETED = "pipeline_completed"
     PIPELINE_FAILED = "pipeline_failed"

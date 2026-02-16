@@ -110,9 +110,12 @@ class TokenCounter:
         self._tiktoken_available = self._check_tiktoken()
         if self._tiktoken_available:
             try:
-                import tiktoken
+                import importlib.util
 
-                self._encoding = tiktoken.get_encoding("cl100k_base")
+                if importlib.util.find_spec("tiktoken") is not None:
+                    import tiktoken
+
+                    self._encoding = tiktoken.get_encoding("cl100k_base")
             except Exception as exc:
                 logger.warning(f"tiktoken initialization failed: {exc}")
                 self._tiktoken_available = False
@@ -120,9 +123,9 @@ class TokenCounter:
     def _check_tiktoken(self) -> bool:
         """Check if tiktoken is available."""
         try:
-            import tiktoken
+            import importlib.util
 
-            return True
+            return importlib.util.find_spec("tiktoken") is not None
         except ImportError:
             return False
 

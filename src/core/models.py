@@ -3,7 +3,7 @@ Core data models for AigenFlow pipeline.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -11,26 +11,26 @@ from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 
 
-class AgentType(str, Enum):
+class AgentType(StrEnum):
     CHATGPT = "chatgpt"
     CLAUDE = "claude"
     GEMINI = "gemini"
     PERPLEXITY = "perplexity"
 
 
-class DocumentType(str, Enum):
+class DocumentType(StrEnum):
     BIZPLAN = "bizplan"
     RD = "rd"
 
 
-class TemplateType(str, Enum):
+class TemplateType(StrEnum):
     DEFAULT = "default"
     STARTUP = "startup"
     STRATEGY = "strategy"
     RD = "rd"
 
 
-class PhaseStatus(str, Enum):
+class PhaseStatus(StrEnum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -38,7 +38,7 @@ class PhaseStatus(str, Enum):
     SKIPPED = "skipped"
 
 
-class PipelineState(str, Enum):
+class PipelineState(StrEnum):
     IDLE = "idle"
     PHASE_1 = "phase_1"
     PHASE_2 = "phase_2"

@@ -2,10 +2,10 @@
 Pipeline state management modules.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class PipelineState(str, Enum):
+class PipelineState(StrEnum):
     """Overall pipeline state machine."""
 
     IDLE = "idle"

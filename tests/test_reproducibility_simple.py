@@ -1,6 +1,7 @@
 """
 Simple Single-AI Reproducibility Test.
 Tests one AI at a time for better stability.
+Refactored to use single context pattern - opens browser ONCE per AI.
 """
 
 import asyncio
@@ -45,7 +46,7 @@ def calculate_similarity(text1: str, text2: str) -> dict:
 
 
 async def test_claude():
-    """Test Claude reproducibility (3 iterations)."""
+    """Test Claude reproducibility (3 iterations, single context)."""
     profile_path = PROFILE_DIR / "claude"
 
     if not profile_path.exists():
@@ -54,16 +55,35 @@ async def test_claude():
 
     responses = []
 
-    async with async_playwright() as p:
-        for i in range(3):
-            context = await p.chromium.launch_persistent_context(
-                str(profile_path),
-                headless=False,
-                channel=BROWSER_CHANNEL,
-                viewport={"width": 1280, "height": 800},
-            )
-            page = context.pages[0] if context.pages else await context.new_page()
+    # Enhanced anti-detection args
+    args = [
+        "--disable-blink-features=AutomationControlled",
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+    ]
 
+    # Single context pattern - open browser ONCE
+    async with async_playwright() as p:
+        context = await p.chromium.launch_persistent_context(
+            str(profile_path),
+            headless=False,
+            channel=BROWSER_CHANNEL,
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            args=args,
+            ignore_default_args=["--enable-automation", "--enable-blink-features=IdleDetection"],
+        )
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        # Anti-detection script
+        await page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+        """)
+
+        try:
             await page.goto("https://claude.ai", wait_until="domcontentloaded", timeout=30000)
 
             # Check login
@@ -72,43 +92,55 @@ async def test_claude():
                 await context.close()
                 return None
 
-            print(f"Claude message {i+1}/3...")
+            # All iterations within same context
+            for i in range(3):
+                print(f"Claude message {i+1}/3...")
 
-            try:
-                # Wait for input and send message
-                await page.wait_for_selector("div[contenteditable='true'], [contenteditable='true']", timeout=15000)
-                editable = await page.query_selector("div[contenteditable='true'], [contenteditable='true']")
-                if editable:
-                    await editable.fill(PROMPT)
-                    await asyncio.sleep(1)
-                    await editable.press("Enter")
+                try:
+                    # Wait for input and send message
+                    await page.wait_for_selector("div[contenteditable='true'], [contenteditable='true']", timeout=15000)
+                    editable = await page.query_selector("div[contenteditable='true'], [contenteditable='true']")
+                    if editable:
+                        await editable.fill(PROMPT)
+                        await asyncio.sleep(1)
+                        await editable.press("Enter")
 
-                    # Wait for response
-                    await asyncio.sleep(20)
+                        # Wait for response
+                        await asyncio.sleep(20)
 
-                    # Capture response
-                    elements = await page.query_selector_all("div[data-testid='message-content']")
-                    if elements:
-                        text = await elements[-1].inner_text()
-                        if len(text) > 30:
-                            responses.append({
-                                "iteration": i + 1,
-                                "content": text,
-                                "length": len(text),
-                                "hash": hashlib.md5(text.encode()).hexdigest(),
-                            })
-                            print(f"  ✓ {len(text)} chars")
+                        # Capture response
+                        elements = await page.query_selector_all("div[data-testid='message-content']")
+                        if elements:
+                            text = await elements[-1].inner_text()
+                            if len(text) > 30:
+                                responses.append({
+                                    "iteration": i + 1,
+                                    "content": text,
+                                    "length": len(text),
+                                    "hash": hashlib.md5(text.encode()).hexdigest(),
+                                })
+                                print(f"  ✓ {len(text)} chars")
+                            else:
+                                print(f"  ✗ Too short: {len(text)} chars")
                         else:
-                            print(f"  ✗ Too short: {len(text)} chars")
+                            print(f"  ✗ No response found")
                     else:
-                        print(f"  ✗ No response found")
-                else:
-                    print(f"  ✗ No input field found")
+                        print(f"  ✗ No input field found")
 
-            except Exception as e:
-                print(f"  ✗ Error: {e}")
+                    # Clear for next iteration
+                    if editable:
+                        await editable.fill("")
+                        await asyncio.sleep(1)
 
+                except Exception as e:
+                    print(f"  ✗ Error: {e}")
+
+        except Exception as e:
+            print(f"Claude: Setup error - {e}")
             await context.close()
+            return None
+
+        await context.close()
 
     # Calculate similarities
     if len(responses) >= 2:
@@ -137,7 +169,7 @@ async def test_claude():
 
 
 async def test_gemini():
-    """Test Gemini reproducibility (3 iterations)."""
+    """Test Gemini reproducibility (3 iterations, single context)."""
     profile_path = PROFILE_DIR / "gemini"
 
     if not profile_path.exists():
@@ -147,15 +179,15 @@ async def test_gemini():
     responses = []
 
     async with async_playwright() as p:
-        for i in range(3):
-            context = await p.chromium.launch_persistent_context(
-                str(profile_path),
-                headless=False,
-                channel=BROWSER_CHANNEL,
-                viewport={"width": 1280, "height": 800},
-            )
-            page = context.pages[0] if context.pages else await context.new_page()
+        context = await p.chromium.launch_persistent_context(
+            str(profile_path),
+            headless=False,
+            channel=BROWSER_CHANNEL,
+            viewport={"width": 1280, "height": 800},
+        )
+        page = context.pages[0] if context.pages else await context.new_page()
 
+        try:
             await page.goto("https://gemini.google.com", wait_until="domcontentloaded", timeout=30000)
 
             # Check login
@@ -164,43 +196,55 @@ async def test_gemini():
                 await context.close()
                 return None
 
-            print(f"Gemini message {i+1}/3...")
+            # All iterations within same context
+            for i in range(3):
+                print(f"Gemini message {i+1}/3...")
 
-            try:
-                # Wait for input and send message
-                await page.wait_for_selector(".ql-editor, textarea, [contenteditable='true']", timeout=15000)
-                editable = await page.query_selector(".ql-editor, textarea, [contenteditable='true']")
-                if editable:
-                    await editable.fill(PROMPT)
-                    await asyncio.sleep(1)
-                    await editable.press("Enter")
+                try:
+                    # Wait for input and send message
+                    await page.wait_for_selector(".ql-editor, textarea, [contenteditable='true']", timeout=15000)
+                    editable = await page.query_selector(".ql-editor, textarea, [contenteditable='true']")
+                    if editable:
+                        await editable.fill(PROMPT)
+                        await asyncio.sleep(1)
+                        await editable.press("Enter")
 
-                    # Wait for response
-                    await asyncio.sleep(20)
+                        # Wait for response
+                        await asyncio.sleep(20)
 
-                    # Capture response
-                    elements = await page.query_selector_all("div.model-response, markdown")
-                    if elements:
-                        text = await elements[-1].inner_text()
-                        if len(text) > 30:
-                            responses.append({
-                                "iteration": i + 1,
-                                "content": text,
-                                "length": len(text),
-                                "hash": hashlib.md5(text.encode()).hexdigest(),
-                            })
-                            print(f"  ✓ {len(text)} chars")
+                        # Capture response
+                        elements = await page.query_selector_all("div.model-response, markdown")
+                        if elements:
+                            text = await elements[-1].inner_text()
+                            if len(text) > 30:
+                                responses.append({
+                                    "iteration": i + 1,
+                                    "content": text,
+                                    "length": len(text),
+                                    "hash": hashlib.md5(text.encode()).hexdigest(),
+                                })
+                                print(f"  ✓ {len(text)} chars")
+                            else:
+                                print(f"  ✗ Too short: {len(text)} chars")
                         else:
-                            print(f"  ✗ Too short: {len(text)} chars")
+                            print(f"  ✗ No response found")
                     else:
-                        print(f"  ✗ No response found")
-                else:
-                    print(f"  ✗ No input field found")
+                        print(f"  ✗ No input field found")
 
-            except Exception as e:
-                print(f"  ✗ Error: {e}")
+                    # Clear for next iteration
+                    if editable:
+                        await editable.fill("")
+                        await asyncio.sleep(1)
 
+                except Exception as e:
+                    print(f"  ✗ Error: {e}")
+
+        except Exception as e:
+            print(f"Gemini: Setup error - {e}")
             await context.close()
+            return None
+
+        await context.close()
 
     # Calculate similarities
     if len(responses) >= 2:
@@ -229,7 +273,7 @@ async def test_gemini():
 
 
 async def test_perplexity():
-    """Test Perplexity reproducibility (3 iterations)."""
+    """Test Perplexity reproducibility (3 iterations, single context)."""
     profile_path = PROFILE_DIR / "perplexity"
 
     if not profile_path.exists():
@@ -239,15 +283,15 @@ async def test_perplexity():
     responses = []
 
     async with async_playwright() as p:
-        for i in range(3):
-            context = await p.chromium.launch_persistent_context(
-                str(profile_path),
-                headless=False,
-                channel=BROWSER_CHANNEL,
-                viewport={"width": 1280, "height": 800},
-            )
-            page = context.pages[0] if context.pages else await context.new_page()
+        context = await p.chromium.launch_persistent_context(
+            str(profile_path),
+            headless=False,
+            channel=BROWSER_CHANNEL,
+            viewport={"width": 1280, "height": 800},
+        )
+        page = context.pages[0] if context.pages else await context.new_page()
 
+        try:
             await page.goto("https://www.perplexity.ai", wait_until="domcontentloaded", timeout=30000)
 
             # Check login
@@ -256,43 +300,55 @@ async def test_perplexity():
                 await context.close()
                 return None
 
-            print(f"Perplexity message {i+1}/3...")
+            # All iterations within same context
+            for i in range(3):
+                print(f"Perplexity message {i+1}/3...")
 
-            try:
-                # Wait for input and send message
-                await page.wait_for_selector("[role='textbox'], textarea, [contenteditable='true']", timeout=15000)
-                editable = await page.query_selector("[role='textbox'], textarea, [contenteditable='true']")
-                if editable:
-                    await editable.fill(PROMPT)
-                    await asyncio.sleep(1)
-                    await editable.press("Enter")
+                try:
+                    # Wait for input and send message
+                    await page.wait_for_selector("[role='textbox'], textarea, [contenteditable='true']", timeout=15000)
+                    editable = await page.query_selector("[role='textbox'], textarea, [contenteditable='true']")
+                    if editable:
+                        await editable.fill(PROMPT)
+                        await asyncio.sleep(1)
+                        await editable.press("Enter")
 
-                    # Wait for response
-                    await asyncio.sleep(20)
+                        # Wait for response
+                        await asyncio.sleep(20)
 
-                    # Capture response
-                    elements = await page.query_selector_all("div.thread-message, [class*='answer']")
-                    if elements:
-                        text = await elements[-1].inner_text()
-                        if len(text) > 30:
-                            responses.append({
-                                "iteration": i + 1,
-                                "content": text,
-                                "length": len(text),
-                                "hash": hashlib.md5(text.encode()).hexdigest(),
-                            })
-                            print(f"  ✓ {len(text)} chars")
+                        # Capture response
+                        elements = await page.query_selector_all("div.thread-message, [class*='answer']")
+                        if elements:
+                            text = await elements[-1].inner_text()
+                            if len(text) > 30:
+                                responses.append({
+                                    "iteration": i + 1,
+                                    "content": text,
+                                    "length": len(text),
+                                    "hash": hashlib.md5(text.encode()).hexdigest(),
+                                })
+                                print(f"  ✓ {len(text)} chars")
+                            else:
+                                print(f"  ✗ Too short: {len(text)} chars")
                         else:
-                            print(f"  ✗ Too short: {len(text)} chars")
+                            print(f"  ✗ No response found")
                     else:
-                        print(f"  ✗ No response found")
-                else:
-                    print(f"  ✗ No input field found")
+                        print(f"  ✗ No input field found")
 
-            except Exception as e:
-                print(f"  ✗ Error: {e}")
+                    # Clear for next iteration
+                    if editable:
+                        await editable.fill("")
+                        await asyncio.sleep(1)
 
+                except Exception as e:
+                    print(f"  ✗ Error: {e}")
+
+        except Exception as e:
+            print(f"Perplexity: Setup error - {e}")
             await context.close()
+            return None
+
+        await context.close()
 
     # Calculate similarities
     if len(responses) >= 2:
@@ -326,7 +382,7 @@ def generate_report(results: list) -> str:
     lines.append("# 실제 AI 응답 재현성 평가 보고서 (단일 AI)")
     lines.append("")
     lines.append(f"**평가 일시**: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    lines.append(f"**평가 방식**: Playwright 직접 접속 (단일 AI별 실행)")
+    lines.append(f"**평가 방식**: Playwright 직접 접속 (단일 AI별 실행, 단일 컨텍스트 패턴)")
     lines.append(f"**반복 횟수**: 3회")
     lines.append("")
 
@@ -375,9 +431,10 @@ def generate_report(results: list) -> str:
 async def main():
     """Main function."""
     print("\n" + "="*60)
-    print("SINGLE AI REPRODUCIBILITY TEST")
+    print("SINGLE AI REPRODUCIBILITY TEST (Single Context Pattern)")
     print("="*60)
     print("\\nTesting each AI separately for stability...\\n")
+    print("Each AI will open browser ONCE and run 3 iterations within same context.\\n")
 
     results = []
 

@@ -11,7 +11,7 @@ Provides:
 Reference: SPEC-ENHANCE-004 US-3, US-4
 """
 
-from enum import Enum
+from enum import StrEnum
 
 import typer
 from rich.console import Console
@@ -25,7 +25,7 @@ app = typer.Typer(help="Show usage statistics and costs")
 console = Console()
 
 
-class StatsFormat(str, Enum):
+class StatsFormat(StrEnum):
     """Output format for statistics."""
 
     TABLE = "table"
