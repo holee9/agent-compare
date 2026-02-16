@@ -16,7 +16,14 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from core import get_settings
+from config.logging_profiles import (
+    LogEnvironment,
+    LogLevel,
+    create_custom_profile,
+    get_logging_profile,
+)
+from core import get_settings, get_logger
+from core.logger import setup_logging
 
 # Import CLI command apps
 from cli.check import app as check_app
@@ -34,6 +41,64 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+def _configure_logging(
+    log_level: str | None = None,
+    log_file: Path | None = None,
+) -> None:
+    """
+    Configure logging based on CLI options or environment settings.
+
+    Args:
+        log_level: Optional log level from CLI (debug, info, warning, error)
+        log_file: Optional custom log file path
+    """
+    settings = get_settings()
+
+    # Determine log level
+    if log_level:
+        try:
+            level = LogLevel.from_string(log_level)
+            profile = create_custom_profile(
+                level,
+                log_file=log_file,
+                output_to_console=True,
+                output_to_file=True,
+            )
+            setup_logging(profile=profile)
+            return
+        except ValueError as e:
+            console.print(f"[bold red]Invalid log level: {e}[/bold red]")
+            raise typer.Exit(code=1)
+
+    # Use environment-based profile
+    environment = (
+        LogEnvironment.DEVELOPMENT
+        if settings.debug
+        else LogEnvironment.PRODUCTION
+    )
+    profile = get_logging_profile(environment)
+
+    # Override log file if provided
+    if log_file:
+        profile = create_custom_profile(
+            profile.log_level,
+            log_file=log_file,
+            output_to_console=profile.should_log_to_console(),
+            output_to_file=True,
+            use_json=profile.use_json,
+        )
+
+    setup_logging(profile=profile)
+
+    logger = get_logger("aigenflow.cli")
+    logger.info(
+        "Logging configured",
+        environment=environment.value,
+        log_level=profile.log_level.value,
+        log_file=str(profile.log_file_path),
+    )
 
 
 # Preserve existing run command behavior
@@ -60,10 +125,23 @@ def _preserve_run_command():
 def main(
     ctx: typer.Context,
     version: bool = typer.Option(False, "--version", "-v", help="Show version and exit"),
+    log_level: str | None = typer.Option(
+        None,
+        "--log-level",
+        help="Set logging level (debug, info, warning, error)",
+    ),
+    log_file: Path | None = typer.Option(
+        None,
+        "--log-file",
+        help="Custom log file path (default: logs/aigenflow.log)",
+    ),
 ) -> None:
     """
     AigenFlow CLI main entry point.
     """
+    # Configure logging before any other operations
+    _configure_logging(log_level, log_file)
+
     if version:
         console.print("[bold green]aigenflow v0.1.0[/bold green]")
         raise typer.Exit()

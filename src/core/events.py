@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from src.core.logger import get_logger, redact_secrets
+from core.logger import get_logger, redact_secrets
 
 logger = get_logger(__name__)
 
