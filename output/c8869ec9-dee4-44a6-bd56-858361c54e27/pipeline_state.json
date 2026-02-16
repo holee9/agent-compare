@@ -1,0 +1,197 @@
+{
+  "session_id": "c8869ec9-dee4-44a6-bd56-858361c54e27",
+  "config": {
+    "topic": "Test topic for UI enabled pipeline execution",
+    "doc_type": "bizplan",
+    "template": "default",
+    "language": "ko",
+    "output_dir": "output",
+    "from_phase": null,
+    "max_retries": 2,
+    "timeout_seconds": 120
+  },
+  "state": "completed",
+  "results": [
+    {
+      "phase_number": 1,
+      "phase_name": "Phase 1: Framing",
+      "status": "completed",
+      "ai_responses": [
+        {
+          "agent_name": "chatgpt",
+          "task_name": "brainstorm_chatgpt",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:46.991546"
+        },
+        {
+          "agent_name": "claude",
+          "task_name": "validate_claude",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:46.992402"
+        }
+      ],
+      "summary": "",
+      "artifacts": {},
+      "started_at": "2026-02-16T16:01:46.983962",
+      "completed_at": "2026-02-16T16:01:46.992402"
+    },
+    {
+      "phase_number": 2,
+      "phase_name": "Phase 2: Research",
+      "status": "completed",
+      "ai_responses": [
+        {
+          "agent_name": "gemini",
+          "task_name": "deep_search_gemini",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:46.998484"
+        },
+        {
+          "agent_name": "perplexity",
+          "task_name": "fact_check_perplexity",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:46.998484"
+        }
+      ],
+      "summary": "",
+      "artifacts": {},
+      "started_at": "2026-02-16T16:01:46.997404",
+      "completed_at": "2026-02-16T16:01:46.998484"
+    },
+    {
+      "phase_number": 3,
+      "phase_name": "Phase 3: Strategy",
+      "status": "completed",
+      "ai_responses": [
+        {
+          "agent_name": "chatgpt",
+          "task_name": "swot_chatgpt",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.003479"
+        },
+        {
+          "agent_name": "claude",
+          "task_name": "narrative_claude",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.004477"
+        }
+      ],
+      "summary": "",
+      "artifacts": {},
+      "started_at": "2026-02-16T16:01:47.002481",
+      "completed_at": "2026-02-16T16:01:47.004477"
+    },
+    {
+      "phase_number": 4,
+      "phase_name": "Phase 4: Writing",
+      "status": "completed",
+      "ai_responses": [
+        {
+          "agent_name": "claude",
+          "task_name": "business_plan_claude",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.010582"
+        },
+        {
+          "agent_name": "chatgpt",
+          "task_name": "outline_chatgpt",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.011626"
+        },
+        {
+          "agent_name": "gemini",
+          "task_name": "charts_gemini",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.012763"
+        }
+      ],
+      "summary": "",
+      "artifacts": {},
+      "started_at": "2026-02-16T16:01:47.010069",
+      "completed_at": "2026-02-16T16:01:47.012763"
+    },
+    {
+      "phase_number": 5,
+      "phase_name": "Phase 5: Review",
+      "status": "completed",
+      "ai_responses": [
+        {
+          "agent_name": "perplexity",
+          "task_name": "verify_perplexity",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.015856"
+        },
+        {
+          "agent_name": "claude",
+          "task_name": "final_review_claude",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.015856"
+        },
+        {
+          "agent_name": "claude",
+          "task_name": "polish_claude",
+          "content": "Success response",
+          "tokens_used": 100,
+          "response_time": 1.0,
+          "success": true,
+          "error": null,
+          "timestamp": "2026-02-16T16:01:47.015856"
+        }
+      ],
+      "summary": "",
+      "artifacts": {},
+      "started_at": "2026-02-16T16:01:47.015856",
+      "completed_at": "2026-02-16T16:01:47.015856"
+    }
+  ],
+  "created_at": "2026-02-16T16:01:46.983962",
+  "updated_at": "2026-02-16T16:01:47.015856",
+  "current_phase": 5,
+  "artifacts": {
+    "context_summaries": {}
+  }
+}
