@@ -186,7 +186,19 @@ def setup(
 
     # Run the async setup
     try:
-        asyncio.run(_run_setup())
+        # Use explicit event loop for better cleanup on Windows
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_run_setup())
+        finally:
+            # Clean up all pending tasks
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.close()
+            asyncio.set_event_loop(None)
     except Exception:
         sys.exit(1)
 

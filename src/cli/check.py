@@ -216,7 +216,19 @@ def check_cmd(
     import asyncio
 
     try:
-        session_status = asyncio.run(_check_sessions(settings, verbose))
+        # Use explicit event loop for better cleanup on Windows
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            session_status = loop.run_until_complete(_check_sessions(settings, verbose))
+        finally:
+            # Clean up all pending tasks
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.close()
+            asyncio.set_event_loop(None)
 
         # Create status table
         table = Table(show_header=True, header_style="bold magenta")

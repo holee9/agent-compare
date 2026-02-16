@@ -84,7 +84,7 @@ class ChatGPTProvider(BaseProvider):
             page = await browser_manager.get_page()
             await page.goto(
                 self.base_url,
-                wait_until="networkidle",
+                wait_until="domcontentloaded",
                 timeout=30000,
             )
 
@@ -153,7 +153,7 @@ class ChatGPTProvider(BaseProvider):
 
         # Get page and navigate to ChatGPT
         page = await browser_manager.get_page()
-        await page.goto(self.base_url, wait_until="networkidle")
+        await page.goto(self.base_url, wait_until="domcontentloaded", timeout=60000)
 
         # Wait for user to complete login
         # Detect successful login by waiting for auth element
