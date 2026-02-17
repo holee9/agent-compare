@@ -85,9 +85,8 @@ def setup(
     # Load settings
     settings = get_settings()
 
-    # Override headless setting if --headed flag is provided
-    if headed:
-        settings.gateway_headless = False
+    # Setup always uses headed mode for user login interaction
+    settings.gateway_headless = False
 
     # Import asyncio here to avoid issues with tests
     import asyncio

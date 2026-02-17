@@ -81,6 +81,20 @@ class ClaudeProvider(BaseProvider):
                 timeout=60000,
             )
 
+            # Step 1: Click new chat button first to ensure we're on a fresh chat
+            new_chat_selector = self.get_selector("new_chat_button", optional=True)
+            if new_chat_selector:
+                try:
+                    # Wait a bit for page to stabilize
+                    await asyncio.sleep(1)
+                    # Try to click new chat button
+                    await page.click(new_chat_selector, timeout=5000)
+                    # Wait for new chat page to load
+                    await asyncio.sleep(1)
+                except Exception:
+                    # If new chat button fails, continue (might already be on new chat)
+                    pass
+
             # Get selectors from selector_loader
             chat_input_selector = self.get_selector("chat_input", optional=True)
             if chat_input_selector is None:

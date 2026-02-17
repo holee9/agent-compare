@@ -196,8 +196,8 @@ def run(
     ] = None,
     headed: Annotated[
         bool,
-        typer.Option("--headed/--headless", help="Show browser window (default: headed)")
-    ] = True,
+        typer.Option("--headed/--headless", help="Show browser window for debugging (default: headless)")
+    ] = False,  # Changed: Always headless by default for background execution
 ) -> None:
     """
     Execute pipeline and generate business plan or R&D proposal document.
