@@ -258,41 +258,53 @@ class BrowserPool:
 
         Implements graceful cleanup with error handling and subprocess termination.
         """
+        logger.debug("[BrowserPool] Starting close_all() cleanup")
         cleanup_errors = []
 
         # Close all contexts first
+        logger.debug(f"[BrowserPool] Closing {len(self._contexts)} contexts")
         for provider_name, context in self._contexts.items():
             if context:
                 try:
                     await context.close()
+                    logger.debug(f"[BrowserPool] Closed context for {provider_name}")
                 except Exception as e:
                     cleanup_errors.append(f"{provider_name}: {e}")
+                    logger.debug(f"[BrowserPool] Error closing {provider_name}: {e}")
 
         self._contexts.clear()
         self._valid_contexts.clear()  # Clear valid contexts tracking
         self._context_locks.clear()  # Clear locks too
+        logger.debug("[BrowserPool] Contexts and locks cleared")
 
         # Close browser
         if self._browser:
             try:
                 # Close all pages in the browser first (helps with subprocess cleanup)
                 contexts = self._browser.contexts
+                logger.debug(f"[BrowserPool] Closing {len(contexts)} browser contexts")
                 for ctx in contexts:
                     try:
                         await ctx.close()
                     except Exception:
                         pass
+                logger.debug("[BrowserPool] Closing browser")
                 await self._browser.close()
+                logger.debug("[BrowserPool] Browser closed")
             except Exception as e:
                 cleanup_errors.append(f"browser: {e}")
+                logger.debug(f"[BrowserPool] Error closing browser: {e}")
             self._browser = None
 
         # Stop playwright
         if self._playwright:
             try:
+                logger.debug("[BrowserPool] Stopping playwright")
                 await self._playwright.stop()
+                logger.debug("[BrowserPool] Playwright stopped")
             except Exception as e:
                 cleanup_errors.append(f"playwright: {e}")
+                logger.debug(f"[BrowserPool] Error stopping playwright: {e}")
             self._playwright = None
 
         # NOTE: Skip subprocess termination during close_all()
@@ -314,6 +326,8 @@ class BrowserPool:
             logger.debug(f"BrowserPool cleanup: {len(cleanup_errors)} expected errors during shutdown")
         else:
             logger.info("BrowserPool closed all resources")
+
+        logger.debug("[BrowserPool] close_all() completed")
 
     async def _terminate_browser_subprocesses(self) -> None:
         """

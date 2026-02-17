@@ -5,17 +5,23 @@ Re-authenticate with AI providers.
 """
 
 import sys
+import warnings
 
 import typer
 from rich.console import Console
 
 from core import get_settings
+from core.logger import get_logger
 from gateway.chatgpt_provider import ChatGPTProvider
 from gateway.claude_provider import ClaudeProvider
 from gateway.gemini_provider import GeminiProvider
 from gateway.perplexity_provider import PerplexityProvider
 
 console = Console()
+logger = get_logger(__name__)
+
+# Suppress GC warnings from subprocess transport cleanup on Windows
+warnings.filterwarnings("ignore", category=ResourceWarning, message="unclosed transport")
 
 
 def _validate_provider(provider: str) -> bool:
@@ -97,29 +103,44 @@ def relogin(
     # Run the async relogin with proper cleanup
     try:
         # Use explicit event loop for proper BrowserPool cleanup
+        logger.debug("[relogin] Creating new event loop")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        logger.debug("[relogin] Event loop created and set")
         try:
+            logger.debug("[relogin] Starting relogin execution")
             loop.run_until_complete(_run_relogin())
+            logger.debug("[relogin] Relogin execution completed")
         finally:
+            logger.debug("[relogin] Starting cleanup in finally block")
+
             # Clean up all pending tasks
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+            logger.debug(f"[relogin] Found {len(pending)} pending tasks")
             for task in pending:
                 task.cancel()
             if pending:
+                logger.debug(f"[relogin] Gathering {len(pending)} cancelled tasks")
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                logger.debug("[relogin] Pending tasks gathered")
 
-            # FIX: Cleanup BrowserPool BEFORE closing loop
+            # NOTE: Skip BrowserPool cleanup to avoid event loop state issues
+            # After task cancellation, the event loop cannot reliably execute new coroutines.
+            # OS automatically terminates child processes when parent exits.
+            logger.debug("[relogin] Skipping BrowserPool cleanup (OS will handle)")
             try:
                 from gateway.browser_pool import BrowserPool
-
                 if BrowserPool._instance:
-                    loop.run_until_complete(BrowserPool._instance.close_all())
-            except Exception:
-                pass  # Ignore cleanup errors during shutdown
+                    logger.debug("[relogin] BrowserPool instance exists, deferring cleanup to OS")
+            except Exception as e:
+                logger.warning(f"[relogin] BrowserPool check warning: {e}")
 
+            logger.debug("[relogin] Closing event loop")
             loop.close()
+            logger.debug("[relogin] Event loop closed")
+            logger.debug("[relogin] Setting event loop to None")
             asyncio.set_event_loop(None)
+            logger.debug("[relogin] Event loop set to None, cleanup complete")
     except Exception:
         sys.exit(1)
 

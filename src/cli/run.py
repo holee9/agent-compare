@@ -5,6 +5,7 @@ Execute pipeline and generate business plan or R&D proposal documents.
 """
 
 import asyncio
+import warnings
 from pathlib import Path
 from typing import Annotated
 
@@ -17,14 +18,19 @@ from agents.claude_agent import ClaudeAgent
 from agents.gemini_agent import GeminiAgent
 from agents.perplexity_agent import PerplexityAgent
 from core import get_settings
+from core.logger import get_logger
 from core.models import AgentType, DocumentType, PipelineConfig, TemplateType
 from gateway.session import SessionManager
 from pipeline.orchestrator import PipelineOrchestrator
 from templates.manager import TemplateManager
 
 console = Console()
+logger = get_logger(__name__)
 
 app = typer.Typer(help="Execute pipeline and generate document")
+
+# Suppress GC warnings from subprocess transport cleanup on Windows
+warnings.filterwarnings("ignore", category=ResourceWarning, message="unclosed transport")
 
 
 def _validate_topic(topic: str) -> str:
@@ -296,29 +302,44 @@ def run(
         import asyncio
 
         # Use explicit event loop for proper BrowserPool cleanup
+        logger.debug("[run] Creating new event loop")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        logger.debug("[run] Event loop created and set")
         try:
+            logger.debug("[run] Starting pipeline execution")
             session = loop.run_until_complete(orchestrator.run_pipeline(config))
+            logger.debug("[run] Pipeline execution completed")
         finally:
+            logger.debug("[run] Starting cleanup in finally block")
+
             # Clean up all pending tasks
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+            logger.debug(f"[run] Found {len(pending)} pending tasks")
             for task in pending:
                 task.cancel()
             if pending:
+                logger.debug(f"[run] Gathering {len(pending)} cancelled tasks")
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                logger.debug("[run] Pending tasks gathered")
 
-            # FIX: Cleanup BrowserPool BEFORE closing loop
+            # NOTE: Skip BrowserPool cleanup to avoid event loop state issues
+            # After task cancellation, the event loop cannot reliably execute new coroutines.
+            # OS automatically terminates child processes when parent exits.
+            logger.debug("[run] Skipping BrowserPool cleanup (OS will handle)")
             try:
                 from gateway.browser_pool import BrowserPool
-
                 if BrowserPool._instance:
-                    loop.run_until_complete(BrowserPool._instance.close_all())
-            except Exception:
-                pass  # Ignore cleanup errors during shutdown
+                    logger.debug("[run] BrowserPool instance exists, deferring cleanup to OS")
+            except Exception as e:
+                logger.warning(f"[run] BrowserPool check warning: {e}")
 
+            logger.debug("[run] Closing event loop")
             loop.close()
+            logger.debug("[run] Event loop closed")
+            logger.debug("[run] Setting event loop to None")
             asyncio.set_event_loop(None)
+            logger.debug("[run] Event loop set to None, cleanup complete")
 
         # Display completion message
         console.print()

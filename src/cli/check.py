@@ -5,6 +5,7 @@ Verifies Playwright browser installation and AI provider sessions.
 """
 
 import sys
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -13,11 +14,17 @@ from rich.console import Console
 from rich.table import Table
 
 from core import get_settings
+from core.logger import get_logger
 from gateway import SelectorLoader, SelectorValidationError
 from gateway.session import SessionManager
 
 app = typer.Typer(help="Check AigenFlow system status")
 console = Console()
+logger = get_logger(__name__)
+
+# Suppress GC warnings from subprocess transport cleanup on Windows
+# These are benign warnings during program exit
+warnings.filterwarnings("ignore", category=ResourceWarning, message="unclosed transport")
 
 
 def _check_browser_installation() -> bool:
@@ -218,21 +225,40 @@ def check_cmd(
 
     try:
         # Use explicit event loop for better cleanup on Windows
+        logger.debug("[check] Creating new event loop")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        logger.debug("[check] Event loop created and set")
         try:
+            logger.debug("[check] Starting session check execution")
             session_status = loop.run_until_complete(_check_sessions(settings, verbose))
+            logger.debug("[check] Session check execution completed")
         finally:
+            logger.debug("[check] Starting cleanup in finally block")
+
             # Clean up all pending tasks (filter out done tasks first)
-            pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
-            for task in pending:
+            all_tasks = asyncio.all_tasks(loop)
+            pending = [t for t in all_tasks if not t.done()]
+            logger.debug(f"[check] Found {len(pending)} pending tasks out of {len(all_tasks)} total")
+            for i, task in enumerate(pending):
+                logger.debug(f"[check] Cancelling task {i+1}/{len(pending)}: {task.get_name() if hasattr(task, 'get_name') else task}")
                 task.cancel()
             if pending:
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                logger.debug(f"[check] Gathering {len(pending)} cancelled tasks")
+                results = loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                logger.debug(f"[check] Pending tasks gathered, results: {[type(r).__name__ for r in results]}")
+
+            # NOTE: Skip BrowserPool cleanup during check command
+            # After task cancellation, the event loop is in a state where run_until_complete()
+            # cannot reliably execute new coroutines. OS automatically terminates child processes
+            # when the parent process exits, so explicit cleanup is not necessary here.
+
+            logger.debug("[check] Closing event loop")
             loop.close()
-            # FIX: Set event loop to None BEFORE Python garbage collection
-            # This prevents "Event loop is closed" errors from subprocess transports
+            logger.debug("[check] Event loop closed")
+            logger.debug("[check] Setting event loop to None")
             asyncio.set_event_loop(None)
+            logger.debug("[check] Event loop set to None, cleanup complete")
 
         # Create status table
         table = Table(show_header=True, header_style="bold magenta")

@@ -12,9 +12,11 @@ from rich.console import Console
 from rich.panel import Panel
 
 from core import get_settings
+from core.logger import get_logger
 from gateway.session import SessionManager
 
 console = Console()
+logger = get_logger(__name__)
 
 # Suppress GC warnings from subprocess transport cleanup on Windows
 warnings.filterwarnings("ignore", category=ResourceWarning, message="unclosed transport")
@@ -191,34 +193,49 @@ def setup(
     # Run the async setup
     try:
         # Use explicit event loop for better cleanup on Windows
+        logger.debug("Creating new event loop")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        logger.debug("Event loop created and set")
+
         try:
+            logger.debug("Starting _run_setup()")
             loop.run_until_complete(_run_setup())
+            logger.debug("_run_setup() completed successfully")
         finally:
+            logger.debug("Starting cleanup in finally block")
+
             # Clean up all pending tasks (filter out done tasks first)
             pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+            logger.debug(f"Found {len(pending)} pending tasks")
             for task in pending:
                 task.cancel()
             if pending:
+                logger.debug(f"Gathering {len(pending)} cancelled tasks")
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
 
-            # FIX: Cleanup BrowserPool BEFORE closing loop (critical!)
-            # This must happen while event loop is still running
+            # NOTE: Skip BrowserPool cleanup to avoid event loop state issues
+            # After task cancellation, the event loop cannot reliably execute new coroutines.
+            # OS automatically terminates child processes when parent exits.
+            logger.debug("Skipping BrowserPool cleanup (OS will handle)")
             try:
                 from gateway.browser_pool import BrowserPool
-
                 if BrowserPool._instance:
-                    loop.run_until_complete(BrowserPool._instance.close_all())
+                    logger.debug("BrowserPool instance exists, deferring cleanup to OS")
             except Exception as e:
-                console.print(f"[yellow]BrowserPool cleanup warning: {e}[/yellow]")
+                logger.warning(f"BrowserPool check warning: {e}")
 
+            logger.debug("Closing event loop")
             loop.close()
+            logger.debug("Event loop closed")
 
             # FIX: Set event loop to None BEFORE Python garbage collection
             # This prevents "Event loop is closed" errors from subprocess transports
+            logger.debug("Setting event loop to None")
             asyncio.set_event_loop(None)
+            logger.debug("Setup cleanup completed, exiting normally")
     except Exception:
+        logger.exception("Setup failed with exception")
         sys.exit(1)
 
 
