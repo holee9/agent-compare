@@ -162,6 +162,10 @@ cookies.json.key
 session_meta.json
 ~/.aigenflow/
 
+# AigenFlow pipeline output
+output/
+dummy/
+
 # Cloud provider credentials
 .aws/config
 .aws/credentials
