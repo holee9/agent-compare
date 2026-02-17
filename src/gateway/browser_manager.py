@@ -10,6 +10,13 @@ from typing import Any
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
+# Import playwright-stealth for anti-bot detection
+try:
+    from playwright_stealth import stealth_async
+    STEALTH_AVAILABLE = True
+except ImportError:
+    STEALTH_AVAILABLE = False
+
 from core.models import AgentType
 from gateway.selector_loader import SelectorLoader
 
@@ -28,12 +35,18 @@ class BrowserManager:
     # Default anti-detection browser arguments
     DEFAULT_BROWSER_ARGS = [
         "--disable-blink-features=AutomationControlled",
+        "--exclude-switches=enable-automation",  # Hide automation flag
         "--disable-infobars",
         "--disable-dev-shm-usage",
         "--no-sandbox",
         "--disable-gpu",
         "--disable-web-security",
         "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-extensions",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--disable-background-networking",
     ]
 
     # Default user agent for Windows Chrome
@@ -137,6 +150,8 @@ class BrowserManager:
         """
         Get or create a page in the current context.
 
+        Applies playwright-stealth if available for anti-bot detection.
+
         Returns:
             Page instance
 
@@ -149,9 +164,19 @@ class BrowserManager:
         # Get existing page or create new one
         pages = self._context.pages
         if pages:
-            return pages[0]
+            page = pages[0]
+        else:
+            page = await self._context.new_page()
 
-        return await self._context.new_page()
+        # Apply playwright-stealth for anti-bot detection
+        if STEALTH_AVAILABLE:
+            try:
+                await stealth_async(page)
+            except Exception:
+                # If stealth fails, continue without it
+                pass
+
+        return page
 
     async def inject_cookies(self, cookies: list[dict[str, Any]]) -> None:
         """

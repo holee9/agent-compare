@@ -340,6 +340,40 @@ class PipelineOrchestrator:
                 self.ui_logger.info(f"Starting pipeline for topic: {config.topic}")
 
         try:
+            # Import here to avoid circular dependency
+            import os
+
+            # Initialize BrowserPool if enabled
+            browser_pool = None
+            if os.getenv("AIGENFLOW_USE_BROWSER_POOL", "true").lower() == "true":
+                from gateway.browser_pool import BrowserPool
+
+                try:
+                    # Get headless setting from config or environment
+                    headless = getattr(config, 'headless', True)
+                    browser_pool = await BrowserPool.get_instance(headless=headless)
+                    logger.info("BrowserPool initialized for pipeline")
+                except Exception as e:
+                    logger.warning(f"BrowserPool initialization failed: {e}")
+                    browser_pool = None
+
+            # Preload contexts for all registered providers if pool is available
+            if browser_pool and hasattr(self.session_manager, '_providers'):
+                from gateway.cookie_storage import CookieStorage
+
+                for provider_name, provider in self.session_manager._providers.items():
+                    try:
+                        # Load cookies from storage
+                        profile_dir = getattr(provider, 'profile_dir', None)
+                        if profile_dir:
+                            storage = CookieStorage(profile_dir)
+                            if storage.session_exists():
+                                cookies = storage.load_cookies()
+                                await browser_pool.preload_context(provider_name, cookies)
+                                logger.info(f"Preloaded context for {provider_name}")
+                    except Exception as e:
+                        logger.warning(f"Failed to preload context for {provider_name}: {e}")
+
             for phase_num in range(start_phase, TOTAL_PHASES + 1):
                 result = await self.execute_phase(session, phase_num)
                 session.add_result(result)
@@ -381,6 +415,14 @@ class PipelineOrchestrator:
                     self.ui_logger.warning(f"Pipeline ended with state: {session.state.value}")
 
         finally:
+            # Cleanup BrowserPool if it was initialized
+            if browser_pool:
+                try:
+                    await browser_pool.close_all()
+                    logger.info("BrowserPool cleaned up after pipeline")
+                except Exception as e:
+                    logger.warning(f"BrowserPool cleanup failed: {e}")
+
             self._save_pipeline_state(exporter, session)
 
         return session

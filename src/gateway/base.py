@@ -153,23 +153,39 @@ class BaseProvider(ABC):
 
     async def get_browser_manager(self):
         """
-        Get or create browser manager for this provider.
+        Get or create browser manager using browser pool.
 
         Returns:
-            BrowserManager instance
+            ProviderContext wrapper from BrowserPool
 
         Note:
-            This is a factory method that creates BrowserManager on first access.
-            Subclasses can override to provide custom configuration.
+            This now uses BrowserPool for context reuse instead of
+            creating separate browser instances. Falls back to legacy
+            BrowserManager if pool is disabled via environment variable.
         """
-        if self._browser_manager is None:
-            # Import here to avoid circular dependency
-            from gateway.browser_manager import BrowserManager
+        import os
 
-            self._browser_manager = BrowserManager(
-                headless=self.headless,
-                ignore_https_errors=self.ignore_https_errors,
-            )
+        # Check if browser pool is enabled (default: true)
+        use_pool = os.getenv("AIGENFLOW_USE_BROWSER_POOL", "true").lower() == "true"
+
+        if self._browser_manager is None:
+            if use_pool:
+                # Use new BrowserPool approach
+                from gateway.provider_context import ProviderContext
+
+                self._browser_manager = ProviderContext(
+                    provider_name=self.provider_name,
+                )
+                logger.info(f"Using BrowserPool for {self.provider_name}")
+            else:
+                # Legacy approach: create separate browser manager
+                from gateway.browser_manager import BrowserManager
+
+                self._browser_manager = BrowserManager(
+                    headless=self.headless,
+                    ignore_https_errors=self.ignore_https_errors,
+                )
+                logger.info(f"Using legacy BrowserManager for {self.provider_name}")
 
         return self._browser_manager
 
