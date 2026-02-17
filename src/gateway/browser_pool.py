@@ -295,20 +295,24 @@ class BrowserPool:
                 cleanup_errors.append(f"playwright: {e}")
             self._playwright = None
 
-        # Give subprocesses time to exit gracefully
-        # Playwright spawns chromium processes that need time to terminate
-        try:
-            await asyncio.sleep(0.2)
-        except Exception:
-            pass
+        # NOTE: Removed asyncio.sleep(0.2) - it causes hangs when loop is closing
+        # OS handles process termination automatically
 
         # Force terminate any remaining browser subprocesses
         await self._terminate_browser_subprocesses()
 
         self._initialized = False
 
-        if cleanup_errors:
-            logger.warning(f"BrowserPool cleanup had errors: {cleanup_errors}")
+        # Filter out expected cleanup errors (event loop already closed during shutdown)
+        # These are benign during program exit
+        expected_errors = ["Event loop is closed", "'NoneType' object has no attribute 'send'"]
+        filtered_errors = [e for e in cleanup_errors if not any(exp in e for exp in expected_errors)]
+
+        if filtered_errors:
+            logger.warning(f"BrowserPool cleanup had errors: {filtered_errors}")
+        elif cleanup_errors:
+            # Only expected errors - log at debug level
+            logger.debug(f"BrowserPool cleanup: {len(cleanup_errors)} expected errors during shutdown")
         else:
             logger.info("BrowserPool closed all resources")
 
