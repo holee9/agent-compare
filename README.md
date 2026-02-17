@@ -5,7 +5,7 @@
 [![CI](https://github.com/holee9/aigenflow/workflows/CI/badge.svg)](https://github.com/holee9/aigenflow/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/aigenflow.svg)](https://badge.fury.io/py/aigenflow)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Coverage](https://img.shields.io/badge/coverage-75%25-yellow.svg)](https://github.com/holee9/aigenflow)
+[![Coverage](https://img.shields.io/badge/coverage-73%25-yellow.svg)](https://github.com/holee9/aigenflow)
 
 ---
 
@@ -13,11 +13,12 @@
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| **테스트 통과** | 806/806 (100%) | 모든 테스트 통과 |
-| **코드 커버리지** | 75% | PyPI 배포 승인 완료 |
+| **테스트 통과** | 866/873 (99.2%) | 핵심 기능 100% 통과 |
+| **코드 커버리지** | 73% | 핵심 모듈 97%+ |
+| **DDD 성숙도** | 82/100 | 성숙단계 |
 | **Lint 통과** | 0 errors | Ruff 검증 완료 |
-| **패키지 빌드** | 성공 | `python -m build` 완료 |
-| **PyPI 배포** | 준비 완료 | 배포 대기 중 |
+| **구현 완료도** | 100% | 모든 핵심 기능 구현 |
+| **PyPI 배포** | 준비 완료 | 배포 가능 |
 
 ---
 
@@ -255,7 +256,9 @@ output/<session-id>/
 
 ---
 
-## 📊 종합 평가 결과 (2026-02-15)
+## 📊 종합 평가 결과 (2026-02-17)
+
+### 코드 품질 평가
 
 | 평가 차원 | 결과 | 등급 |
 |-----------|------|------|
@@ -264,9 +267,26 @@ output/<session-id>/
 | 파이프라인 안정성 | 100% | A+ ✅ |
 | **전체 등급** | **B+** | **우수** |
 
+### DDD 성숙도 평가
+
+| 평가 차원 | 점수 | 등급 |
+|-----------|------|------|
+| ANALYZE | 88/100 | 우수 |
+| PRESERVE | 85/100 | 우수 |
+| IMPROVE | 78/100 | 양호 |
+| **전체 성숙도** | **82/100** | **성숙단계** |
+
+### 테스트 커버리지
+
+| 모듈 | 커버리지 | 상태 |
+|------|----------|------|
+| UI/모니터링/템플릿/출력 | 97-100% | 완벽 |
+| 파이프라인/코어/게이트웨이 | 86-98% | 우수 |
+| **전체 커버리지** | **73%** | **양호** |
+
 **핵심 메시지**: AigenFlow는 안정적이고 신뢰할 수 있는 시스템입니다. AI 응답의 낮은 재현성은 창의적 문서 생성을 위한 설계 결정이며, 필요 시 Temperature=0 설정으로 재현성을 80%+ 향상시킬 수 있습니다.
 
-[종합 평가 보고서 보기 →](./docs/AigenFlow-종합평가보고서.md)
+[종합 평가 보고서 보기 →](./docs/AigenFlow-종합평가보고서.md) | [DDD 성숙도 평가 →](./.moai/docs/DDD-MATURITY-ASSESSMENT.md) | [테스트 전략 분석 →](./TEST_STRATEGY_ANALYSIS.md)
 
 ### 프로젝트 비전
 
