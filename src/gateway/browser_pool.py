@@ -295,11 +295,10 @@ class BrowserPool:
                 cleanup_errors.append(f"playwright: {e}")
             self._playwright = None
 
-        # NOTE: Removed asyncio.sleep(0.2) - it causes hangs when loop is closing
-        # OS handles process termination automatically
-
-        # Force terminate any remaining browser subprocesses
-        await self._terminate_browser_subprocesses()
+        # NOTE: Skip subprocess termination during close_all()
+        # OS automatically terminates child processes when parent exits.
+        # Calling psutil during cleanup causes hangs and KeyboardInterrupt.
+        # _terminate_browser_subprocesses() is available for manual cleanup if needed.
 
         self._initialized = False
 
