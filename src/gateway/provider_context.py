@@ -5,6 +5,8 @@ This module provides a wrapper for provider-specific browser contexts,
 handling cookie injection/extraction and page management with anti-detection measures.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from playwright.async_api import BrowserContext, Page

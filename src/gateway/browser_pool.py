@@ -5,6 +5,8 @@ This module implements a singleton pattern for managing a single browser instanc
 across all AI provider agents, reducing memory usage and startup time.
 """
 
+from __future__ import annotations
+
 import asyncio
 from typing import Any
 
