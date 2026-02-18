@@ -262,6 +262,33 @@ aigenflow config set <key> <value>  # 설정 변경
 | `--headed` | 브라우저 창 표시 | `true` |
 | `--headless` | 백그라운드 실행 (브라우저 숨김) | `false` |
 
+### 환경 변수
+
+| 변수 | 설명 | 기본값 |
+|------|------|--------|
+| `AC_DEBUG` | 디버그 모드 활성화 | `false` |
+| `AC_LOG_LEVEL` | 로그 레벨 (DEBUG/INFO/WARNING/ERROR) | `INFO` |
+| `AC_LOG_FORMAT` | 로그 형식 (json/pretty) | `pretty` |
+| `AC_OUTPUT_DIR` | 출력 디렉토리 경로 | `output/` |
+| `AC_PROFILES_DIR` | 브라우저 프로필 디렉토리 | `~/.aigenflow/profiles/` |
+| `AC_GATEWAY_HEADLESS` | 브라우저 백그라운드 실행 | `false` |
+| `AC_GATEWAY_TIMEOUT` | 브라우저 작업 타임아웃 (초) | `120` |
+| `AC_ENABLE_PARALLEL_PHASES` | 병렬 Phase 실행 활성화 | `true` |
+| `AC_ENABLE_SUMMARIZATION` | 컨텍스트 요약 활성화 | `true` |
+| `AIGENFLOW_USE_BROWSER_POOL` | BrowserPool 싱글톤 사용 | `true` |
+
+**예시:**
+```bash
+# BrowserPool 비활성화 (개발/디버깅용)
+export AIGENFLOW_USE_BROWSER_POOL=false
+
+# 백그라운드 실행 기본 설정
+export AC_GATEWAY_HEADLESS=true
+
+# 로그 레벨 변경
+export AC_LOG_LEVEL=DEBUG
+```
+
 ---
 
 ## 출력 결과물
